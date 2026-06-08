@@ -1,50 +1,103 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+  Sync Impact Report
+  ==================
+  Version change: N/A → 1.0.0 (initial ratification)
+  Modified principles: N/A (initial)
+  Added sections:
+    - Core Principles (3 principles)
+    - Technology Stack
+    - Governance
+  Removed sections:
+    - SECTION_3 (Development Workflow placeholder) — not needed;
+      workflow is implicit in Principle II (Copilot Automated Harness)
+  Templates requiring updates:
+    - .specify/templates/plan-template.md ✅ no changes needed
+    - .specify/templates/spec-template.md ✅ no changes needed
+    - .specify/templates/tasks-template.md ✅ no changes needed
+  Follow-up TODOs: None
+-->
+
+# TrainSetGo Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Spec/Test Driven
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Specifications and tests MUST precede implementation code.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+- Every feature MUST have a written specification before development
+  begins.
+- Automated tests MUST be written and validated (red) before the
+  corresponding implementation is produced.
+- Acceptance criteria in specs MUST be expressed as testable scenarios
+  (Given/When/Then or equivalent).
+- Code that lacks a backing spec or test is considered unauthorized and
+  MUST NOT be merged.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+**Rationale**: Specs and tests encode intent; writing them first
+eliminates ambiguity and prevents scope creep.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### II. Copilot Automated Harness Development
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Development is driven through AI-assisted automation with GitHub
+Copilot; harnesses and tooling are built to support this workflow.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+- The development workflow MUST be optimized for AI-agent-driven
+  iteration (clear specs, deterministic test harnesses, minimal manual
+  steps).
+- Test harnesses MUST be runnable non-interactively so that Copilot
+  agents can execute and interpret results autonomously.
+- Build, lint, and test commands MUST be expressible as single-line
+  invocations suitable for automation.
+- Manual intervention SHOULD be limited to creative decisions (game
+  design, art direction) and final approval gates.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+**Rationale**: Maximizing automation throughput requires that every
+repeatable task is machine-executable without human babysitting.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### III. Fun
+
+The game MUST be fun above all else; gameplay enjoyment is the ultimate
+measure of success.
+
+- When a technical decision conflicts with player enjoyment, fun MUST
+  win unless safety or correctness is at stake.
+- Features MUST be evaluated through playtesting feedback, not solely
+  through code metrics.
+- Complexity that does not serve player experience MUST be removed or
+  simplified.
+
+**Rationale**: TrainSetGo exists to entertain. Technical excellence
+that produces a boring game is a failure.
+
+## Technology Stack
+
+- **Platform**: Static web only — the game MUST be deployable as
+  static HTML/CSS/JS files with no server-side runtime.
+- **Languages**: Plain HTML, CSS, and JavaScript. No compile-to-JS
+  languages (TypeScript is acceptable only if project opts in
+  explicitly in a future amendment).
+- **Frameworks**: NONE. No React, Vue, Angular, or similar. No utility
+  CSS frameworks (Tailwind, Bootstrap).
+- **APIs**: Modern baseline browser APIs (Canvas, Web Audio,
+  requestAnimationFrame, ES modules, etc.) are encouraged.
+- **Compatibility**: Target evergreen browsers (latest stable Chrome,
+  Firefox, Safari, Edge). No IE11 or legacy polyfills.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all other project practices and
+conventions. All contributors (human and AI) MUST comply.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+- **Amendments** require a pull request with clear rationale, at least
+  one approving review, and a version bump following SemVer:
+  - MAJOR: Principle removal or incompatible redefinition.
+  - MINOR: New principle/section added or materially expanded.
+  - PATCH: Clarifications, typo fixes, non-semantic refinements.
+- **Compliance review**: Every PR MUST be checked against these
+  principles before merge. Violations block merge.
+- **Conflict resolution**: If two principles conflict, resolve in
+  numbered order (I → II → III) unless the Fun principle (III) is
+  explicitly invoked by a maintainer to override.
+
+**Version**: 1.0.0 | **Ratified**: 2026-06-08 | **Last Amended**: 2026-06-08
