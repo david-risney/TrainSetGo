@@ -11,6 +11,7 @@ export class InputController {
     this.handlers = handlers; // { onTap, onPan, onZoom }
     this.pointers = new Map();
     this._pinchDist = 0;
+    this._pinchAngle = 0;
     this._downPos = null;
     this._downTime = 0;
     this._moved = false;
@@ -42,7 +43,11 @@ export class InputController {
   }
 
   _onDown(e) {
-    this.target.setPointerCapture?.(e.pointerId);
+    try {
+      this.target.setPointerCapture?.(e.pointerId);
+    } catch {
+      /* synthetic or already-released pointer */
+    }
     const p = this._local(e);
     this.pointers.set(e.pointerId, p);
     if (this.pointers.size === 1) {
@@ -51,6 +56,7 @@ export class InputController {
       this._moved = false;
     } else if (this.pointers.size === 2) {
       this._pinchDist = this._twoFingerDist();
+      this._pinchAngle = this._twoFingerAngle();
     }
   }
 
@@ -61,13 +67,20 @@ export class InputController {
     this.pointers.set(e.pointerId, p);
 
     if (this.pointers.size === 2) {
+      const c = this._twoFingerCenter();
       const dist = this._twoFingerDist();
       if (this._pinchDist > 0) {
         const factor = dist / this._pinchDist;
-        const c = this._twoFingerCenter();
         this.handlers.onZoom?.(factor, c.x, c.y);
       }
+      const angle = this._twoFingerAngle();
+      let dAngle = angle - this._pinchAngle;
+      // Normalize to [-PI, PI] to avoid jumps at the atan2 wrap.
+      if (dAngle > Math.PI) dAngle -= 2 * Math.PI;
+      else if (dAngle < -Math.PI) dAngle += 2 * Math.PI;
+      this.handlers.onRotate?.(dAngle, c.x, c.y);
       this._pinchDist = dist;
+      this._pinchAngle = angle;
       this._moved = true;
       return;
     }
@@ -106,6 +119,11 @@ export class InputController {
   _twoFingerDist() {
     const [a, b] = [...this.pointers.values()];
     return Math.hypot(a.x - b.x, a.y - b.y);
+  }
+
+  _twoFingerAngle() {
+    const [a, b] = [...this.pointers.values()];
+    return Math.atan2(b.y - a.y, b.x - a.x);
   }
 
   _twoFingerCenter() {

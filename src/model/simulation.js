@@ -85,7 +85,6 @@ export class GameModel {
   // --- Editing API (only while not running) --------------------------------
 
   placeTrack(hex, shape, orientation = 0, switchState = null) {
-    if (this.running) return fail("running");
     const tile = this._tile(hex);
     if (!tile) return fail("no-tile");
     if (!isEditable(tile)) return fail("locked");
@@ -97,7 +96,6 @@ export class GameModel {
   }
 
   rotateTrack(hex) {
-    if (this.running) return fail("running");
     const tile = this._tile(hex);
     if (!tile) return fail("no-tile");
     if (!isEditable(tile)) return fail("locked");
@@ -108,7 +106,6 @@ export class GameModel {
   }
 
   removeTrack(hex) {
-    if (this.running) return fail("running");
     const tile = this._tile(hex);
     if (!tile) return fail("no-tile");
     if (!isEditable(tile)) return fail("locked");

@@ -20,6 +20,31 @@ test("canvas renders and zoom changes the camera", async ({ page }) => {
   expect(after).not.toBe(before);
 });
 
+test("two-finger gesture rotates the camera", async ({ page }) => {
+  await openApp(page);
+  await page.evaluate(() => window.TrainSetGo.playLevel("level-a"));
+  const before = await page.evaluate(() => window.TrainSetGo.camera().rotation);
+
+  await page.evaluate(() => {
+    const c = document.getElementById("scene");
+    const rect = c.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const ev = (id, x, y, type) =>
+      c.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: x, clientY: y, bubbles: true }));
+    ev(1, cx - 60, cy, "pointerdown");
+    ev(2, cx + 60, cy, "pointerdown");
+    // Rotate the two contact points ~90° around the center.
+    ev(1, cx, cy - 60, "pointermove");
+    ev(2, cx, cy + 60, "pointermove");
+    ev(1, cx, cy - 60, "pointerup");
+    ev(2, cx, cy + 60, "pointerup");
+  });
+
+  const after = await page.evaluate(() => window.TrainSetGo.camera().rotation);
+  expect(after).not.toBe(before);
+});
+
 test("running a level emits an audio event", async ({ page }) => {
   await openApp(page);
   await page.evaluate(() => {
@@ -30,4 +55,16 @@ test("running a level emits an audio event", async ({ page }) => {
   const evt = await page.evaluate(() => window.TrainSetGo.lastAudioEvent());
   expect(evt).not.toBeNull();
   expect(typeof evt.type).toBe("string");
+});
+
+test("Creative Commons audio assets load from files", async ({ page }) => {
+  await openApp(page);
+  const info = await page.evaluate(() => ({
+    sfxCount: window.TrainSetGo.app.audio.sfxBuffers.size,
+    hasMusic: !!window.TrainSetGo.app.audio.musicEl,
+    attribution: window.TrainSetGo.app.audio.attribution(),
+  }));
+  expect(info.sfxCount).toBeGreaterThan(0);
+  expect(info.hasMusic).toBe(true);
+  expect(info.attribution).toContain("Kevin MacLeod");
 });

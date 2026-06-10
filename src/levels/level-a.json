@@ -3,27 +3,64 @@
   "name": "First Steps",
   "seed": 12345,
   "grid": [
-    { "q": -1, "r": 0, "terrain": "station", "lock": "locked", "track": null },
+    { "q": -2, "r": 0, "terrain": "station", "lock": "locked", "track": null },
+    { "q": -1, "r": 0, "terrain": "grass", "lock": "editable", "track": { "shape": "straight", "orientation": 0, "switchState": null } },
     { "q": 0, "r": 0, "terrain": "grass", "lock": "editable", "track": null },
     { "q": 1, "r": 0, "terrain": "grass", "lock": "editable", "track": { "shape": "straight", "orientation": 0, "switchState": null } },
-    { "q": 2, "r": 0, "terrain": "grass", "lock": "editable", "track": { "shape": "straight", "orientation": 0, "switchState": null } },
-    { "q": 3, "r": 0, "terrain": "station", "lock": "locked", "track": null },
+    { "q": 2, "r": 0, "terrain": "station", "lock": "locked", "track": null },
+
+    { "q": -2, "r": 2, "terrain": "station", "lock": "locked", "track": null },
+    { "q": -1, "r": 2, "terrain": "grass", "lock": "editable", "track": { "shape": "straight", "orientation": 0, "switchState": null } },
+    { "q": 0, "r": 2, "terrain": "grass", "lock": "editable", "track": null },
+    { "q": 1, "r": 2, "terrain": "grass", "lock": "editable", "track": { "shape": "straight", "orientation": 0, "switchState": null } },
+    { "q": 2, "r": 2, "terrain": "station", "lock": "locked", "track": null },
+
+    { "q": -2, "r": -2, "terrain": "station", "lock": "locked", "track": null },
+    { "q": -1, "r": -2, "terrain": "grass", "lock": "editable", "track": { "shape": "straight", "orientation": 0, "switchState": null } },
+    { "q": 0, "r": -2, "terrain": "grass", "lock": "editable", "track": null },
+    { "q": 1, "r": -2, "terrain": "grass", "lock": "editable", "track": { "shape": "straight", "orientation": 0, "switchState": null } },
+    { "q": 2, "r": -2, "terrain": "station", "lock": "locked", "track": null },
+
     { "q": 0, "r": 1, "terrain": "forest", "lock": "locked", "track": null },
     { "q": 1, "r": 1, "terrain": "lake", "lock": "locked", "track": null },
-    { "q": 2, "r": -1, "terrain": "mountain", "lock": "locked", "track": null }
+    { "q": -1, "r": 1, "terrain": "forest", "lock": "locked", "track": null },
+    { "q": 0, "r": -1, "terrain": "mountain", "lock": "locked", "track": null },
+    { "q": 1, "r": -1, "terrain": "forest", "lock": "locked", "track": null }
   ],
   "stations": [
-    { "q": -1, "r": 0, "color": "red" },
-    { "q": 3, "r": 0, "color": "red" }
+    { "q": -2, "r": 0, "color": "red" },
+    { "q": 2, "r": 0, "color": "red" },
+    { "q": -2, "r": 2, "color": "blue" },
+    { "q": 2, "r": 2, "color": "blue" },
+    { "q": -2, "r": -2, "color": "green" },
+    { "q": 2, "r": -2, "color": "green" }
   ],
   "trains": [
     {
       "id": "t1",
       "name": "Red Express",
       "color": "red",
-      "source": { "q": -1, "r": 0 },
-      "destination": { "q": 3, "r": 0 },
+      "source": { "q": -2, "r": 0 },
+      "destination": { "q": 2, "r": 0 },
       "startDelay": 0,
+      "required": true
+    },
+    {
+      "id": "t2",
+      "name": "Blue Streak",
+      "color": "blue",
+      "source": { "q": -2, "r": 2 },
+      "destination": { "q": 2, "r": 2 },
+      "startDelay": 2,
+      "required": true
+    },
+    {
+      "id": "t3",
+      "name": "Green Hauler",
+      "color": "green",
+      "source": { "q": -2, "r": -2 },
+      "destination": { "q": 2, "r": -2 },
+      "startDelay": 4,
       "required": true
     }
   ],

@@ -29,6 +29,11 @@ export class SettingsScreen {
         "data-testid": "btn-back",
         onClick: () => this.app.showMenu(),
       }),
+      el("p", {
+        class: "status-line credits",
+        "data-testid": "audio-credits",
+        text: this.app.audio.attribution(),
+      }),
     ]);
     root.appendChild(panel);
   }

@@ -8,6 +8,8 @@ test("unlocked levels persist across a reload", async ({ page }) => {
   await page.evaluate(() => {
     window.TrainSetGo.playLevel("level-a");
     window.TrainSetGo.tapHex(0, 0);
+    window.TrainSetGo.tapHex(0, 2);
+    window.TrainSetGo.tapHex(0, -2);
     window.TrainSetGo.runLevel();
   });
   await expect(page.getByTestId("status")).toContainText("Cleared");

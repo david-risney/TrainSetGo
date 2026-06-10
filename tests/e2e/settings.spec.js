@@ -26,4 +26,5 @@ test("muting sound effects persists across a reload", async ({ page }) => {
 
   await page.evaluate(() => window.TrainSetGo.goSettings());
   await expect(page.getByTestId("sfx-mute")).toBeChecked();
+  await expect(page.getByTestId("audio-credits")).toContainText("CC BY 4.0");
 });

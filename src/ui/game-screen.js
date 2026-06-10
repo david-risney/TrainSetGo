@@ -1,9 +1,13 @@
-// In-level play screen: tool palette, place/rotate/remove, switch toggle, run, result.
-// (US1, US4; FR-003..FR-009, FR-027)
+// In-level play screen (arcade): trains run continuously while the player keeps placing,
+// rotating, erasing track and toggling switches. There is no "Run" button. (US1, US4)
 
 import { button, el } from "./dom.js";
 import { GameModel } from "../model/simulation.js";
 import { TrackShape } from "../model/constants.js";
+
+// Real-time milliseconds a train spends crossing one tile. Deliberately slow for an
+// arcade feel — the player must build ahead of the trains.
+const TILE_MS = 900;
 
 const PLACE_TOOLS = [
   { id: "straight", label: "Straight", shape: TrackShape.STRAIGHT },
@@ -22,7 +26,11 @@ export class GameScreen {
     this.model.loadLevel(levelDef);
     this.tool = "straight";
     this.running = false;
-    this._timer = null;
+    this.finished = false;
+    this._raf = null;
+    this._lastStep = 0;
+    this._progress = 0;
+    this._frame = this._frame.bind(this);
     this._restoreInProgress();
   }
 
@@ -35,7 +43,6 @@ export class GameScreen {
     for (const sw of ip.switchStates ?? []) {
       const tile = this.model.getState().tiles.find((t) => t.q === sw.q && t.r === sw.r);
       if (tile?.track) {
-        // toggle until it matches the saved branch
         let guard = 0;
         while (
           (this.model.getState().tiles.find((t) => t.q === sw.q && t.r === sw.r).track.switchState ?? 0) !==
@@ -60,7 +67,7 @@ export class GameScreen {
         class: "btn",
         "data-testid": "btn-back",
         onClick: () => {
-          this._stopTimer();
+          this._stopLoop();
           this.app.showOverworld();
         },
       }),
@@ -90,33 +97,27 @@ export class GameScreen {
       );
     }
 
-    this.runBtn = button("Run", {
-      class: "btn",
-      "data-testid": "btn-run",
-      onClick: () => this.run(),
-    });
-    this.retryBtn = button("Retry", {
+    this.retryBtn = button("Restart", {
       class: "btn",
       "data-testid": "btn-retry",
       onClick: () => this.retry(),
     });
-    this.retryBtn.style.display = "none";
 
-    const bottom = el("div", { class: "hud bottom" }, [palette, this.runBtn, this.retryBtn]);
-
+    const bottom = el("div", { class: "hud bottom" }, [palette, this.retryBtn]);
     const screen = el("div", { class: "screen", "data-testid": "screen-game" }, [top, bottom]);
     root.appendChild(screen);
 
     this._selectToolDom();
-    this._render();
-    this._setStatus("Editing");
 
-    // Expose test hooks for end-to-end tests (real handler paths).
+    // Expose test hooks (deterministic, real handler paths).
     this.app._gameHooks = {
       tapHex: (q, r) => this._applyToolAtHex({ q, r }),
-      run: () => this.runToCompletion(),
+      run: () => this.settle(),
       retry: () => this.retry(),
     };
+
+    // Arcade: start the trains immediately and animate continuously.
+    this._startLoop();
   }
 
   _selectTool(id, node) {
@@ -145,13 +146,14 @@ export class GameScreen {
       res = this.model.placeTrack(hex, tool.shape, 0);
     }
     if (res?.ok) {
+      this._saveInProgress();
       this._render();
-      if (!this.running) this._saveInProgress();
     }
     return res;
   }
 
   _saveInProgress() {
+    if (this.finished) return;
     const state = this.model.getState();
     const tilePlacements = state.tiles
       .filter((t) => t.playerPlaced && t.track)
@@ -169,76 +171,97 @@ export class GameScreen {
   }
 
   _render() {
-    this.app.renderer.render(this.model.getState());
+    this.app.renderer.render(this.model.getState(), this._progress);
   }
 
   _setStatus(text) {
     if (this.statusEl) this.statusEl.textContent = text;
   }
 
-  run() {
-    if (this.running) return;
+  // --- Live arcade loop ----------------------------------------------------
+
+  _startLoop() {
     this.model.startRun();
     this.running = true;
-    this.runBtn.disabled = true;
-    this._setStatus("Running…");
-    this._timer = setInterval(() => {
-      this.model.step();
-      this._render();
-      if (this.model.isRunComplete()) {
-        this._stopTimer();
-        this._finishRun();
-      } else {
-        this._setStatus(`Running… tick ${this.model.getState().tick}`);
-      }
-    }, 120);
+    this.finished = false;
+    this._lastStep = performance.now();
+    this._progress = 0;
+    this._setStatus("Go! Lay track before the trains arrive…");
+    this._render();
+    this._raf = requestAnimationFrame(this._frame);
   }
 
-  // Synchronous run for tests/headless validation.
-  runToCompletion() {
-    if (this.running) return;
+  _frame(now) {
+    if (!this.running) return;
+    const elapsed = now - this._lastStep;
+    this._progress = Math.min(elapsed / TILE_MS, 1);
+    if (elapsed >= TILE_MS) {
+      this.model.step();
+      this._lastStep = now;
+      this._progress = 0;
+      if (this.model.isRunComplete()) {
+        this._render();
+        this._finishRun();
+        return;
+      }
+      this._setStatus(`Running… ${this._liveSummary()}`);
+    }
+    this._render();
+    this._raf = requestAnimationFrame(this._frame);
+  }
+
+  _liveSummary() {
+    const trains = this.model.getState().trains;
+    const done = trains.filter((t) => t.status === "completed").length;
+    const lost = trains.filter((t) => t.status === "lost").length;
+    return `delivered ${done}, lost ${lost}`;
+  }
+
+  // Deterministic fast-forward used by tests: replay the run with the current track.
+  settle() {
+    if (this.finished) return;
+    this._stopLoop();
+    this.model.running = false;
     this.model.startRun();
-    this.running = true;
-    this.runBtn.disabled = true;
     this.model.runUntilComplete(2000);
     this._render();
     this._finishRun();
   }
 
   _finishRun() {
+    if (this.finished) return;
+    this.finished = true;
+    this.running = false;
+    this._stopLoop();
     const result = this.model.getRunResult();
     const unlocked = this.app.recordResult(this.levelDef, result);
     const verb = result.outcome === "cleared" ? "Cleared" : "Failed";
     let msg = `${verb} ${Math.round(result.completionPct)}%`;
     if (unlocked.length) msg += ` — unlocked: ${unlocked.join(", ")}`;
     this._setStatus(msg);
-    this.runBtn.style.display = "none";
-    this.retryBtn.style.display = "";
   }
 
   retry() {
-    this._stopTimer();
+    this._stopLoop();
+    this.finished = false;
     this.running = false;
     this.model = new GameModel();
     this.model.setEventSink((e) => this.app.audio.onEvent(e));
     this.model.loadLevel(this.levelDef);
     this._restoreInProgress();
-    this.runBtn.style.display = "";
-    this.runBtn.disabled = false;
-    this.retryBtn.style.display = "none";
-    this._render();
-    this._setStatus("Editing");
     this.app._gameHooks.tapHex = (q, r) => this._applyToolAtHex({ q, r });
+    this._startLoop();
   }
 
-  _stopTimer() {
-    if (this._timer) {
-      clearInterval(this._timer);
-      this._timer = null;
+  _stopLoop() {
+    this.running = false;
+    if (this._raf != null) {
+      cancelAnimationFrame(this._raf);
+      this._raf = null;
     }
   }
 
   dispose() {
-    this._stopTimer();
+    this._stopLoop();
   }
 }

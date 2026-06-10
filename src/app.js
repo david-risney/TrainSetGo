@@ -36,6 +36,10 @@ export class GameApp {
         this.renderer.camera.zoomBy(factor, cx, cy);
         this.requestRender();
       },
+      onRotate: (deltaRadians) => {
+        this.renderer.camera.rotateBy(deltaRadians);
+        this.requestRender();
+      },
     });
 
     window.addEventListener("resize", () => this.renderer.resize());
@@ -52,6 +56,7 @@ export class GameApp {
     this.save = new SaveStore(window.localStorage, this.manifest);
     this.state = this.save.load();
     this.audio.applySettings(this.state.settings);
+    await this.audio.load();
     this.showMenu();
   }
 
@@ -61,6 +66,7 @@ export class GameApp {
 
   requestRender(snapshot) {
     if (snapshot) this.renderer.render(snapshot);
+    else if (this.renderer.lastSnapshot) this.renderer.render(this.renderer.lastSnapshot);
   }
 
   clearUI() {

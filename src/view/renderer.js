@@ -1,7 +1,7 @@
 // Canvas 2D isometric compositor. Projects axial hexes to a squished iso layout and
 // draws terrain/track/stations/trains as voxel-style prisms. Browser-only. (FR-039)
 
-import { EDGE_DIRECTIONS } from "../model/hex.js";
+import { EDGE_DIRECTIONS, neighbor, oppositeEdge } from "../model/hex.js";
 import { TerrainType, TrainStatus } from "../model/constants.js";
 import { Camera } from "./camera.js";
 import { terrainColor, terrainHeight, themeColor } from "./voxel.js";
@@ -69,29 +69,39 @@ export class Renderer {
 
   worldToScreen(w) {
     const o = this._origin();
+    const cos = Math.cos(this.camera.rotation);
+    const sin = Math.sin(this.camera.rotation);
+    const rx = w.x * cos - w.y * sin;
+    const ry = w.x * sin + w.y * cos;
     return {
-      x: o.x + this.camera.panX + w.x * this.camera.zoom,
-      y: o.y + this.camera.panY + w.y * this.camera.zoom,
+      x: o.x + this.camera.panX + rx * this.camera.zoom,
+      y: o.y + this.camera.panY + ry * this.camera.zoom,
     };
   }
 
   screenToHex(sx, sy) {
     const o = this._origin();
-    const wx = (sx - o.x - this.camera.panX) / this.camera.zoom;
-    const wy = (sy - o.y - this.camera.panY) / this.camera.zoom;
+    const zx = (sx - o.x - this.camera.panX) / this.camera.zoom;
+    const zy = (sy - o.y - this.camera.panY) / this.camera.zoom;
+    // Inverse-rotate back into world space.
+    const cos = Math.cos(this.camera.rotation);
+    const sin = Math.sin(this.camera.rotation);
+    const wx = zx * cos + zy * sin;
+    const wy = -zx * sin + zy * cos;
     return worldToHex(wx, wy);
   }
 
   _hexCorners(cx, cy, radius) {
     const pts = [];
+    const rot = this.camera.rotation;
     for (let i = 0; i < 6; i++) {
-      const ang = (Math.PI / 180) * (60 * i - 90);
+      const ang = (Math.PI / 180) * (60 * i - 90) + rot;
       pts.push({ x: cx + radius * Math.cos(ang), y: cy + radius * SQUISH * Math.sin(ang) });
     }
     return pts;
   }
 
-  render(snapshot) {
+  render(snapshot, progress = 1) {
     this.lastSnapshot = snapshot;
     const ctx = this.ctx;
     ctx.save();
@@ -122,18 +132,31 @@ export class Renderer {
       if (station) this._drawStation(s.x, s.y - height, radius, station.color);
     }
 
-    // Trains on top.
+    // Trains on top, interpolated between their previous and current tile.
     for (const train of snapshot.trains) {
       if (train.status === TrainStatus.WAITING) continue;
-      if (train.status === TrainStatus.LOST || train.status === TrainStatus.COMPLETED) {
-        // brief end-state still drawn faintly
-      }
-      const w = hexToWorld(train.position.q, train.position.r);
+      const w = this._trainWorld(train, progress);
       const s = this.worldToScreen(w);
       this._drawTrain(s.x, s.y - 14 * this.camera.zoom, radius, train);
     }
 
     ctx.restore();
+  }
+
+  // Interpolated world position for a moving train (smooths slow tile-to-tile motion).
+  _trainWorld(train, progress) {
+    if (
+      train.status === TrainStatus.RUNNING &&
+      train.headingEdge != null &&
+      progress < 1
+    ) {
+      const enterEdge = oppositeEdge(train.headingEdge);
+      const prev = neighbor(train.position, enterEdge);
+      const a = hexToWorld(prev.q, prev.r);
+      const b = hexToWorld(train.position.q, train.position.r);
+      return { x: a.x + (b.x - a.x) * progress, y: a.y + (b.y - a.y) * progress };
+    }
+    return hexToWorld(train.position.q, train.position.r);
   }
 
   _drawPrism(cx, cy, radius, height, tile) {
@@ -175,24 +198,44 @@ export class Renderer {
 
   _drawTrack(cx, cy, radius, track) {
     const ctx = this.ctx;
-    ctx.strokeStyle = "#2b2b2b";
-    ctx.lineWidth = Math.max(2, 4 * this.camera.zoom);
     ctx.lineCap = "round";
+    const rot = this.camera.rotation;
+    const cos = Math.cos(rot);
+    const sin = Math.sin(rot);
     const edgeOffset = (edge) => {
       const d = EDGE_DIRECTIONS[edge];
       const w = hexToWorld(d.q, d.r);
-      return { x: (w.x * 0.5) * this.camera.zoom, y: (w.y * 0.5) * this.camera.zoom };
+      const rx = w.x * cos - w.y * sin;
+      const ry = w.x * sin + w.y * cos;
+      return { x: rx * 0.5 * this.camera.zoom, y: ry * 0.5 * this.camera.zoom };
     };
-    const pairs = trackPairs(track);
-    for (const [a, b] of pairs) {
+    const segment = (a, b, color, width) => {
       const oa = edgeOffset(a);
       const ob = edgeOffset(b);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
       ctx.beginPath();
       ctx.moveTo(cx + oa.x, cy + oa.y);
       ctx.lineTo(cx, cy);
       ctx.lineTo(cx + ob.x, cy + ob.y);
       ctx.stroke();
+    };
+
+    const base = Math.max(2, 4 * this.camera.zoom);
+    const e = (edge) => (edge + track.orientation) % 6;
+
+    if (track.shape === "switch") {
+      const inbound = e(3);
+      const selected = e((track.switchState ?? 0) === 0 ? 0 : 1);
+      const other = e((track.switchState ?? 0) === 0 ? 1 : 0);
+      // Non-selected branch: lighter and thinner.
+      segment(inbound, other, "rgba(120,120,120,0.55)", Math.max(1.5, base * 0.7));
+      // Selected branch: full dark rail on top.
+      segment(inbound, selected, "#2b2b2b", base);
+      return;
     }
+
+    for (const [a, b] of trackPairs(track)) segment(a, b, "#2b2b2b", base);
   }
 
   _drawStation(cx, cy, radius, color) {

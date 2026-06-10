@@ -5,18 +5,24 @@ export class Camera {
     this.zoom = 1;
     this.panX = 0;
     this.panY = 0;
+    this.rotation = 0; // radians
     this.minZoom = 0.3;
     this.maxZoom = 4;
   }
 
-  set({ zoom, panX, panY } = {}) {
+  set({ zoom, panX, panY, rotation } = {}) {
     if (typeof zoom === "number") this.zoom = this._clampZoom(zoom);
     if (typeof panX === "number") this.panX = panX;
     if (typeof panY === "number") this.panY = panY;
+    if (typeof rotation === "number") this.rotation = rotation;
   }
 
   get() {
-    return { zoom: this.zoom, panX: this.panX, panY: this.panY };
+    return { zoom: this.zoom, panX: this.panX, panY: this.panY, rotation: this.rotation };
+  }
+
+  rotateBy(deltaRadians) {
+    this.rotation += deltaRadians;
   }
 
   _clampZoom(z) {

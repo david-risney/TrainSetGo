@@ -1,9 +1,11 @@
-// Web Audio SFX + music. Browser-only. Synthesizes simple tones so no asset files are
-// required for the harness; volume/mute honor settings. Listens via View.onEvent. (FR-042, FR-043)
+// Audio: streams Creative Commons music (mp3) and plays sound-effect files (wav), with a
+// synthesized fallback when assets are missing or cannot be decoded (e.g. offline). The
+// model stays DOM-free and drives this via View.onEvent. (FR-042, FR-043)
 
 import { View, ViewEvent } from "./view-abstraction.js";
 
-const SFX = {
+// Synthesized fallback specs, used when a sound file is unavailable.
+const SFX_FALLBACK = {
   [ViewEvent.DEPART]: { freq: 440, dur: 0.12, type: "triangle" },
   [ViewEvent.ARRIVE]: { freq: 660, dur: 0.18, type: "sine" },
   [ViewEvent.CRASH]: { freq: 120, dur: 0.3, type: "sawtooth" },
@@ -23,9 +25,17 @@ export class AudioView extends View {
       ...settings,
     };
     this.ctx = null;
-    this.musicGain = null;
-    this.musicOsc = null;
     this.lastEvent = null;
+
+    // File-backed assets (populated by load()).
+    this.basePath = "src/assets/audio";
+    this.manifest = null;
+    this.musicEl = null; // HTMLAudioElement
+    this.sfxBuffers = new Map(); // event type -> AudioBuffer
+
+    // Synth fallback handles.
+    this.musicOsc = null;
+    this.musicGain = null;
   }
 
   _ensureContext() {
@@ -35,14 +45,73 @@ export class AudioView extends View {
     this.ctx = new AC();
   }
 
+  // Load the manifest, prepare the music element, and decode SFX buffers. Any failure
+  // leaves the corresponding fallback in place; never throws.
+  async load(basePath = this.basePath) {
+    this.basePath = basePath;
+    try {
+      const res = await fetch(`${basePath}/manifest.json`);
+      if (!res.ok) return;
+      this.manifest = await res.json();
+    } catch {
+      return;
+    }
+
+    // Music: stream the first track via an <audio> element (loops).
+    const track = this.manifest.music?.[0];
+    if (track && typeof Audio !== "undefined") {
+      try {
+        const el = new Audio(`${basePath}/${track.file}`);
+        el.loop = true;
+        el.preload = "auto";
+        el.volume = this.settings.musicMuted ? 0 : this.settings.musicVolume;
+        this.musicEl = el;
+      } catch {
+        this.musicEl = null;
+      }
+    }
+
+    // SFX: fetch + decode each into an AudioBuffer.
+    this._ensureContext();
+    if (this.ctx && this.manifest.sfx) {
+      await Promise.all(
+        Object.entries(this.manifest.sfx).map(async ([type, file]) => {
+          try {
+            const r = await fetch(`${basePath}/${file}`);
+            if (!r.ok) return;
+            const data = await r.arrayBuffer();
+            const buffer = await this.ctx.decodeAudioData(data);
+            this.sfxBuffers.set(type, buffer);
+          } catch {
+            /* keep synth fallback for this effect */
+          }
+        }),
+      );
+    }
+  }
+
+  attribution() {
+    return this.manifest?.attribution ?? "";
+  }
+
   applySettings(settings) {
     this.settings = { ...this.settings, ...settings };
+    if (this.musicEl) {
+      this.musicEl.volume = this.settings.musicMuted ? 0 : this.settings.musicVolume;
+    }
     if (this.musicGain) {
       this.musicGain.gain.value = this.settings.musicMuted ? 0 : this.settings.musicVolume * 0.06;
     }
   }
 
   startMusic() {
+    if (this.musicEl) {
+      this.musicEl.volume = this.settings.musicMuted ? 0 : this.settings.musicVolume;
+      const p = this.musicEl.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+      return;
+    }
+    // Fallback: a single soft synthesized drone.
     this._ensureContext();
     if (!this.ctx || this.musicOsc) return;
     const osc = this.ctx.createOscillator();
@@ -57,6 +126,14 @@ export class AudioView extends View {
   }
 
   stopMusic() {
+    if (this.musicEl) {
+      try {
+        this.musicEl.pause();
+        this.musicEl.currentTime = 0;
+      } catch {
+        /* ignore */
+      }
+    }
     if (this.musicOsc) {
       try {
         this.musicOsc.stop();
@@ -71,7 +148,23 @@ export class AudioView extends View {
   onEvent(event) {
     this.lastEvent = event;
     if (this.settings.sfxMuted) return;
-    const spec = SFX[event.type];
+
+    const buffer = this.sfxBuffers.get(event.type);
+    if (buffer && this.ctx) {
+      const src = this.ctx.createBufferSource();
+      const gain = this.ctx.createGain();
+      gain.gain.value = this.settings.sfxVolume;
+      src.buffer = buffer;
+      src.connect(gain).connect(this.ctx.destination);
+      src.start();
+      return;
+    }
+
+    this._playSynthSfx(event.type);
+  }
+
+  _playSynthSfx(type) {
+    const spec = SFX_FALLBACK[type];
     if (!spec) return;
     this._ensureContext();
     if (!this.ctx) return;

@@ -9,15 +9,16 @@ import { TestView } from "./support/test-view.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const levelA = JSON.parse(readFileSync(join(here, "../../src/levels/level-a.json"), "utf8"));
 
-test("completing the path delivers the train and clears the level", () => {
+test("completing all paths delivers every train and clears the level", () => {
   const model = new GameModel();
   const view = new TestView();
   model.setEventSink((e) => view.onEvent(e));
   model.loadLevel(levelA);
 
-  // The only gap is at (0,0); place a straight to bridge it.
-  const res = model.placeTrack({ q: 0, r: 0 }, "straight", 0);
-  assert.ok(res.ok);
+  // Each of the three corridors has a single editable gap at q=0.
+  assert.ok(model.placeTrack({ q: 0, r: 0 }, "straight", 0).ok);
+  assert.ok(model.placeTrack({ q: 0, r: 2 }, "straight", 0).ok);
+  assert.ok(model.placeTrack({ q: 0, r: -2 }, "straight", 0).ok);
 
   model.startRun();
   const result = model.runUntilComplete(200);
@@ -26,21 +27,24 @@ test("completing the path delivers the train and clears the level", () => {
   assert.equal(view.trainById("t1").status, "completed");
   assert.equal(result.outcome, "cleared");
   assert.equal(result.completionPct, 100);
-  assert.deepEqual(result.deliveredTrainIds, ["t1"]);
-  assert.ok(view.eventsOfType("arrive").length >= 1);
+  assert.deepEqual(result.deliveredTrainIds.sort(), ["t1", "t2", "t3"]);
+  assert.ok(view.eventsOfType("arrive").length >= 3);
 });
 
-test("editing is rejected on locked tiles and while running", () => {
+test("editing is rejected on locked tiles but allowed during a run (arcade)", () => {
   const model = new GameModel();
   model.loadLevel(levelA);
-  // (-1,0) is a locked station.
-  assert.equal(model.placeTrack({ q: -1, r: 0 }, "straight", 0).ok, false);
+  // (-2,0) is a locked station.
+  assert.equal(model.placeTrack({ q: -2, r: 0 }, "straight", 0).ok, false);
 
   model.placeTrack({ q: 0, r: 0 }, "straight", 0);
   model.startRun();
-  // No edits allowed during a run.
-  assert.equal(model.placeTrack({ q: 0, r: 0 }, "straight", 0).ok, false);
-  assert.equal(model.rotateTrack({ q: 0, r: 0 }).ok, false);
+  // Arcade mode: the player keeps editing unlocked tiles while trains run.
+  assert.equal(model.rotateTrack({ q: 0, r: 0 }).ok, true);
+  assert.equal(model.removeTrack({ q: 0, r: 0 }).ok, true);
+  assert.equal(model.placeTrack({ q: 0, r: 0 }, "straight", 0).ok, true);
+  // Locked tiles remain off-limits even during a run.
+  assert.equal(model.placeTrack({ q: -2, r: 0 }, "straight", 0).ok, false);
 });
 
 test("rotateTrack advances orientation; removeTrack clears a player tile", () => {
