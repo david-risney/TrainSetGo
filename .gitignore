@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Test / tool output
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Env
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp

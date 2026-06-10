@@ -1,0 +1,188 @@
+:root {
+  --bg: #1b2230;
+  --panel: #28324a;
+  --panel-2: #313d59;
+  --accent: #5cc8ff;
+  --text: #eef3ff;
+  --muted: #9fb0d0;
+  --touch-target: 44px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+}
+
+.app {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+.ui-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ui-root > * {
+  pointer-events: auto;
+}
+
+/* Screens */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  /* Plain screens (game/overworld) let pointer events through their empty areas
+     so the canvas underneath can be panned/zoomed; interactive containers below
+     re-enable pointer events for themselves. */
+  pointer-events: none;
+}
+
+.menu,
+.settings-panel,
+.editor-panel,
+.hud,
+.palette,
+.overworld-grid {
+  pointer-events: auto;
+}
+
+.menu {
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: radial-gradient(circle at 50% 30%, #2a3550, #161c28);
+}
+
+.menu h1 {
+  font-size: clamp(2rem, 8vw, 4rem);
+  margin: 0 0 1rem;
+  letter-spacing: 0.05em;
+}
+
+/* Touch-friendly controls (FR-047: >= 44x44 CSS px) */
+button,
+.btn,
+.tool {
+  min-width: var(--touch-target);
+  min-height: var(--touch-target);
+  padding: 0.6rem 1.1rem;
+  font-size: 1rem;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid #44557d;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+button:hover,
+.btn:hover,
+.tool:hover {
+  background: #3c4a6e;
+}
+
+button:active,
+.tool.active {
+  background: var(--accent);
+  color: #08121d;
+}
+
+/* HUD bars overlaid on the scene */
+.hud {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(20, 26, 38, 0.82);
+}
+
+.hud.top {
+  top: 0;
+}
+
+.hud.bottom {
+  bottom: 0;
+  justify-content: center;
+}
+
+.palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.status-line {
+  flex: 1 1 auto;
+  align-self: center;
+  color: var(--muted);
+  min-width: 8ch;
+}
+
+.overworld-grid,
+.editor-panel {
+  width: 100%;
+  height: 100%;
+}
+
+.settings-panel,
+.editor-panel {
+  background: var(--panel);
+  padding: 1rem;
+  overflow: auto;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+}
+
+label {
+  color: var(--muted);
+}
+
+input[type="range"] {
+  min-height: var(--touch-target);
+}
+
+/* Responsive: stack palette vertically on narrow portrait screens */
+@media (max-width: 480px) {
+  .hud {
+    padding: 0.35rem;
+  }
+  button,
+  .btn,
+  .tool {
+    padding: 0.5rem 0.7rem;
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "comment": "Voxel model definitions. Colors are sourced from src/view/voxel.js palettes; this manifest documents the model set the renderer composites as isometric prisms.",
+  "version": 1,
+  "terrain": ["grass", "forest", "lake", "mountain", "mountainTunnel", "tunnelInterior", "station", "track"],
+  "track": ["straight", "slightCurve", "sharpCurve", "switch", "crossing"],
+  "trains": ["red", "blue", "green", "yellow", "purple"],
+  "decorations": ["tree", "rock", "lamppost"],
+  "stations": ["red", "blue", "green", "yellow", "purple"]
+}

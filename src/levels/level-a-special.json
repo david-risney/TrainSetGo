@@ -1,0 +1,26 @@
+{
+  "id": "level-a-special",
+  "name": "Special Detour",
+  "seed": 99,
+  "grid": [
+    { "q": -1, "r": 0, "terrain": "station", "lock": "locked", "track": null },
+    { "q": 0, "r": 0, "terrain": "grass", "lock": "editable", "track": null },
+    { "q": 1, "r": 0, "terrain": "station", "lock": "locked", "track": null }
+  ],
+  "stations": [
+    { "q": -1, "r": 0, "color": "green" },
+    { "q": 1, "r": 0, "color": "green" }
+  ],
+  "trains": [
+    {
+      "id": "g1",
+      "color": "green",
+      "source": { "q": -1, "r": 0 },
+      "destination": { "q": 1, "r": 0 },
+      "startDelay": 0,
+      "required": true
+    }
+  ],
+  "exitRequirement": { "minRequiredDeliveredPct": 100 },
+  "unlockRules": []
+}

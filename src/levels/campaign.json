@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "levels": [
+    { "id": "level-a", "file": "level-a.json", "hex": { "q": 0, "r": 0 } },
+    { "id": "level-b", "file": "level-b.json", "hex": { "q": 1, "r": 0 } },
+    { "id": "level-a-special", "file": "level-a-special.json", "hex": { "q": 0, "r": 1 } },
+    { "id": "level-c", "file": "level-c.json", "hex": { "q": 2, "r": 0 } },
+    { "id": "level-switch", "file": "level-switch.json", "hex": { "q": 1, "r": 1 } }
+  ],
+  "initialUnlocked": ["level-a", "level-switch"]
+}
