@@ -18,6 +18,6 @@
     "place": "sfx/place.wav",
     "rotate": "sfx/rotate.wav"
   },
-  "attribution": "Music: \"Carefree\" by Kevin MacLeod (incompetech.com) — licensed under Creative Commons Attribution 4.0 (CC BY 4.0). Sound effects: original works released under CC0 1.0 (public domain). Drop additional CC0/CC-BY .mp3 files into music/ or sfx/ and reference them here.",
-  "comment": "The audio engine fetches these files at runtime and falls back to synthesized tones if a file is missing or cannot be decoded (e.g. offline)."
+  "attribution": "Music: \"Carefree\" by Kevin MacLeod (incompetech.com) — licensed under Creative Commons Attribution 4.0 (CC BY 4.0). Sound effects: original works released under CC0 1.0 (public domain).",
+  "comment": "The audio engine fetches these files at runtime and falls back to synthesized tones if a file is missing or cannot be decoded (e.g. offline). To add more audio, drop CC0/CC-BY files into music/ or sfx/ and reference them above."
 }

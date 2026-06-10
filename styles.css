@@ -153,6 +153,56 @@ button:active,
   height: 100%;
 }
 
+/* Centre origin for level nodes + progression links. */
+.overworld-inner {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+}
+
+.overworld-inner .level-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  white-space: nowrap;
+  text-align: center;
+  font-weight: 600;
+}
+
+.overworld-inner .level-node.unlocked {
+  border-color: var(--accent);
+}
+
+.overworld-inner .level-node.locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* SVG link overlay centred on the inner origin (0,0). */
+.overworld-links {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  overflow: visible;
+  pointer-events: none;
+}
+
+.overworld-links .link {
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.overworld-links .link.unlocked {
+  stroke: var(--accent);
+  opacity: 0.7;
+}
+
+.overworld-links .link.locked {
+  stroke: #44557d;
+  stroke-dasharray: 6 6;
+  opacity: 0.6;
+}
+
 .settings-panel,
 .editor-panel {
   background: var(--panel);
