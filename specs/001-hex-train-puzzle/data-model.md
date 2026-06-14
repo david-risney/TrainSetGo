@@ -12,7 +12,7 @@ hex side; direction/rotation are expressed as edge indices.
 - **LockState**: `locked` | `editable`  (only `grass` is `editable`; all others default `locked`)
 - **ColorTheme**: a named palette key (e.g., `red`, `blue`, `green`, `yellow`, `purple`). Trains
   match stations by equal `ColorTheme`.
-- **TrainStatus**: `waiting` | `running` | `completed` | `lost`
+- **TrainStatus**: `waiting` | `boarding` | `running` | `completed` | `lost`
 - **RunOutcome**: `cleared` | `failed`
 
 ## Entities
@@ -56,7 +56,9 @@ hex side; direction/rotation are expressed as edge indices.
 - `required: bool` — required vs optional (FR-017).
 - Runtime: `status: TrainStatus`, `position: Hex`, `headingEdge: int`.
 - Lifecycle / state transitions:
-  - `waiting` → `running` when `tick >= startDelay`.
+  - `waiting` → `boarding` when `tick > startDelay` (train is produced and parked at its
+    source station; the view shows a countdown over the station for the final ≤10 seconds).
+  - `boarding` → `running` after a short dwell (`DWELL_TICKS`, ~2 seconds) at the station.
   - `running` → `completed` on entering its `destination` station with matching color (FR-013).
   - `running` → `lost` on: reaching end of track (FR-014); collision with another train
     (FR-015, both become `lost`); entering a wrong/mismatched station (FR-016).

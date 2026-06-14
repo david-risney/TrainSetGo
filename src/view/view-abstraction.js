@@ -19,6 +19,7 @@ export class View {
 
 // Event type constants for consistency across emitters/listeners.
 export const ViewEvent = Object.freeze({
+  PRODUCE: "produce",
   DEPART: "depart",
   ARRIVE: "arrive",
   CRASH: "crash",

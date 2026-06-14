@@ -25,5 +25,4 @@ test("leaving corridors unbridged loses trains and fails the level", async ({ pa
     window.TrainSetGo.runLevel();
   });
   await expect(page.getByTestId("status")).toContainText("Failed");
-  await expect(page.getByTestId("btn-retry")).toBeVisible();
 });

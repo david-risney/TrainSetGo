@@ -6,6 +6,7 @@ import { View, ViewEvent } from "./view-abstraction.js";
 
 // Synthesized fallback specs, used when a sound file is unavailable.
 const SFX_FALLBACK = {
+  [ViewEvent.PRODUCE]: { freq: 392, dur: 0.1, type: "sine" },
   [ViewEvent.DEPART]: { freq: 440, dur: 0.12, type: "triangle" },
   [ViewEvent.ARRIVE]: { freq: 660, dur: 0.18, type: "sine" },
   [ViewEvent.CRASH]: { freq: 120, dur: 0.3, type: "sawtooth" },

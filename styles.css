@@ -1,11 +1,19 @@
 :root {
-  --bg: #1b2230;
-  --panel: #28324a;
-  --panel-2: #313d59;
-  --accent: #5cc8ff;
-  --text: #eef3ff;
-  --muted: #9fb0d0;
+  /* "Sunny Rails" theme — warm, playful, consistent across every screen. */
+  --bg: #fbf3c9; /* light yellow background */
+  --bg-2: #f6e9a8;
+  --panel: #fffdf3;
+  --panel-2: #fff7e0;
+  --ink: #4a3b1e; /* warm dark text */
+  --muted: #8a7748;
+  --primary: #ff7043; /* engine orange */
+  --primary-ink: #fff;
+  --secondary: #1fa6a0; /* signal teal */
+  --accent: #ffc527; /* sunny yellow */
+  --rail: #5a4a2a;
+  --line: #e6d49a;
   --touch-target: 44px;
+  color-scheme: light;
 }
 
 * {
@@ -19,8 +27,8 @@ body {
   height: 100%;
   overflow: hidden;
   background: var(--bg);
-  color: var(--text);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
   -webkit-user-select: none;
   user-select: none;
   touch-action: none;
@@ -65,28 +73,18 @@ body {
 }
 
 .menu,
+.menu-card,
 .settings-panel,
 .editor-panel,
 .hud,
 .palette,
-.overworld-grid {
+.piece-rotate-btn,
+.overworld-grid,
+.overworld-inner .level-node {
   pointer-events: auto;
 }
 
-.menu {
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  background: radial-gradient(circle at 50% 30%, #2a3550, #161c28);
-}
-
-.menu h1 {
-  font-size: clamp(2rem, 8vw, 4rem);
-  margin: 0 0 1rem;
-  letter-spacing: 0.05em;
-}
-
-/* Touch-friendly controls (FR-047: >= 44x44 CSS px) */
+/* --- Buttons -------------------------------------------------------------- */
 button,
 .btn,
 .tool {
@@ -94,26 +92,116 @@ button,
   min-height: var(--touch-target);
   padding: 0.6rem 1.1rem;
   font-size: 1rem;
-  color: var(--text);
-  background: var(--panel-2);
-  border: 1px solid #44557d;
-  border-radius: 8px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--panel);
+  border: 2px solid var(--line);
+  border-radius: 12px;
   cursor: pointer;
+  transition: transform 0.06s ease, background 0.12s ease, box-shadow 0.12s ease;
 }
 
 button:hover,
 .btn:hover,
 .tool:hover {
-  background: #3c4a6e;
+  background: var(--panel-2);
 }
 
 button:active,
-.tool.active {
-  background: var(--accent);
-  color: #08121d;
+.btn:active,
+.tool:active {
+  transform: translateY(1px);
 }
 
-/* HUD bars overlaid on the scene */
+.tool.active {
+  background: var(--accent);
+  border-color: var(--rail);
+  box-shadow: 0 0 0 2px rgba(255, 197, 39, 0.5);
+  color: var(--ink);
+}
+
+.btn-primary {
+  background: var(--primary);
+  border-color: #e0562c;
+  color: var(--primary-ink);
+  font-size: 1.25rem;
+  padding: 0.8rem 1.6rem;
+  box-shadow: 0 4px 0 #d34f29;
+}
+
+.btn-primary::before {
+  content: "\25B6  ";
+}
+
+.btn-primary:hover {
+  background: #ff855c;
+}
+
+.btn-secondary {
+  background: var(--panel);
+  border-color: var(--secondary);
+  color: var(--secondary);
+}
+
+.btn-secondary:hover {
+  background: #e8faf8;
+}
+
+/* --- Menu ----------------------------------------------------------------- */
+.menu {
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 50% 22%, #fff6c0, transparent 60%),
+    repeating-linear-gradient(135deg, var(--bg) 0 22px, var(--bg-2) 22px 44px);
+}
+
+.menu-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem 2.6rem;
+  background: var(--panel);
+  border: 3px solid var(--rail);
+  border-radius: 24px;
+  box-shadow: 0 14px 0 rgba(90, 74, 42, 0.18), 0 18px 40px rgba(74, 59, 30, 0.25);
+  max-width: 90vw;
+}
+
+.menu-logo {
+  font-size: clamp(3rem, 14vw, 5rem);
+  line-height: 1;
+  filter: drop-shadow(0 4px 2px rgba(74, 59, 30, 0.25));
+}
+
+.menu h1 {
+  font-size: clamp(2.2rem, 9vw, 3.6rem);
+  margin: 0;
+  letter-spacing: 0.04em;
+  color: var(--primary);
+  text-shadow: 2px 2px 0 var(--accent), 4px 4px 0 rgba(90, 74, 42, 0.15);
+}
+
+.menu-tagline {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.menu-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.8rem;
+  width: min(78vw, 320px);
+}
+
+.menu-actions .btn {
+  width: 100%;
+}
+
+/* --- HUD bars overlaid on the scene -------------------------------------- */
 .hud {
   position: absolute;
   left: 0;
@@ -122,7 +210,14 @@ button:active,
   flex-wrap: wrap;
   gap: 0.5rem;
   padding: 0.5rem;
-  background: rgba(20, 26, 38, 0.82);
+  background: rgba(255, 253, 243, 0.86);
+  border-bottom: 2px solid var(--line);
+}
+
+.hud strong {
+  align-self: center;
+  color: var(--primary);
+  font-size: 1.1rem;
 }
 
 .hud.top {
@@ -131,13 +226,112 @@ button:active,
 
 .hud.bottom {
   bottom: 0;
+  top: auto;
   justify-content: center;
+  border-bottom: none;
+  border-top: 2px solid var(--line);
 }
 
 .palette {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
+  align-items: center;
+}
+
+/* Editor palette: grouped tile pickers (Track / Stations / Terrain). */
+.editor-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.tool-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0 0.4rem;
+  border-left: 2px solid var(--line);
+}
+
+.tool-group:first-child {
+  border-left: none;
+}
+
+.tool-group-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  text-align: center;
+}
+
+.tool-group-items {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.editor-tool {
+  padding: 0.2rem;
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tool-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 2px solid rgba(90, 74, 42, 0.45);
+  display: block;
+  pointer-events: none;
+}
+
+/* Random track-piece slots show the piece MODEL instead of a name. */
+.piece-slot {
+  padding: 0.25rem;
+  width: 60px;
+  height: 60px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.piece-canvas {
+  width: 48px;
+  height: 48px;
+  display: block;
+  pointer-events: none;
+}
+
+/* Floating button that hovers next to the most recently placed piece so the
+   player can nudge its rotation. Positioned in JS via worldToScreen. */
+.piece-rotate-btn {
+  position: absolute;
+  z-index: 5;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid #5a4a2a;
+  background: var(--accent);
+  color: #5a4a2a;
+  font-size: 1.25rem;
+  line-height: 1;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(90, 74, 42, 0.35);
+}
+
+.piece-rotate-btn:hover {
+  filter: brightness(1.05);
 }
 
 .status-line {
@@ -145,6 +339,7 @@ button:active,
   align-self: center;
   color: var(--muted);
   min-width: 8ch;
+  font-weight: 600;
 }
 
 .overworld-grid,
@@ -153,11 +348,11 @@ button:active,
   height: 100%;
 }
 
-/* Centre origin for level nodes + progression links. */
+/* Centre origin for level nodes (positioned in screen space by the renderer). */
 .overworld-inner {
   position: absolute;
-  left: 50%;
-  top: 45%;
+  left: 0;
+  top: 0;
 }
 
 .overworld-inner .level-node {
@@ -165,42 +360,21 @@ button:active,
   transform: translate(-50%, -50%);
   white-space: nowrap;
   text-align: center;
-  font-weight: 600;
+  font-weight: 700;
+  background: var(--panel);
+  border: 2px solid var(--rail);
+  box-shadow: 0 3px 0 rgba(90, 74, 42, 0.25);
 }
 
 .overworld-inner .level-node.unlocked {
-  border-color: var(--accent);
+  border-color: var(--secondary);
+  color: var(--secondary);
 }
 
 .overworld-inner .level-node.locked {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* SVG link overlay centred on the inner origin (0,0). */
-.overworld-links {
-  position: absolute;
-  left: 0;
-  top: 0;
-  transform: translate(-50%, -50%);
-  overflow: visible;
-  pointer-events: none;
-}
-
-.overworld-links .link {
-  stroke-width: 3;
-  stroke-linecap: round;
-}
-
-.overworld-links .link.unlocked {
-  stroke: var(--accent);
-  opacity: 0.7;
-}
-
-.overworld-links .link.locked {
-  stroke: #44557d;
-  stroke-dasharray: 6 6;
   opacity: 0.6;
+  color: var(--muted);
+  cursor: not-allowed;
 }
 
 .settings-panel,
@@ -208,6 +382,12 @@ button:active,
   background: var(--panel);
   padding: 1rem;
   overflow: auto;
+}
+
+.settings-panel h2,
+.editor-panel h2 {
+  color: var(--primary);
+  margin-top: 0;
 }
 
 .row {
@@ -223,9 +403,138 @@ label {
 
 input[type="range"] {
   min-height: var(--touch-target);
+  accent-color: var(--primary);
 }
 
-/* Responsive: stack palette vertically on narrow portrait screens */
+input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--secondary);
+}
+
+textarea {
+  background: #fffdf3;
+  color: var(--ink);
+  border: 2px solid var(--line);
+  border-radius: 8px;
+}
+
+/* --- End-of-level summary (native modal dialog) -------------------------- */
+.summary-dialog {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: auto;
+  max-width: 92vw;
+  overflow: visible;
+}
+
+.summary-dialog::backdrop {
+  background: rgba(74, 59, 30, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+.summary-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: min(86vw, 380px);
+  padding: 1.6rem 1.8rem 1.4rem;
+  text-align: center;
+  background: var(--panel);
+  border: 3px solid var(--rail);
+  border-radius: 24px;
+  box-shadow: 0 14px 0 rgba(90, 74, 42, 0.18), 0 18px 40px rgba(74, 59, 30, 0.3);
+}
+
+.summary-badge {
+  font-size: 3rem;
+  line-height: 1;
+  filter: drop-shadow(0 4px 2px rgba(74, 59, 30, 0.25));
+}
+
+.summary-title {
+  margin: 0;
+  font-size: clamp(1.6rem, 7vw, 2.2rem);
+  letter-spacing: 0.03em;
+  text-shadow: 2px 2px 0 var(--accent);
+}
+
+.summary-dialog.is-win .summary-title {
+  color: var(--secondary);
+}
+
+.summary-dialog.is-lose .summary-title {
+  color: var(--primary);
+}
+
+.summary-pct {
+  margin: 0;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.summary-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem 0.8rem;
+  margin: 0.2rem 0 0.4rem;
+}
+
+.summary-stat {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.summary-stat.ok {
+  color: var(--secondary);
+}
+
+.summary-stat.bad {
+  color: var(--primary);
+}
+
+.summary-unlocks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 1.6rem;
+  margin-bottom: 0.4rem;
+}
+
+.summary-unlock-label {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.summary-unlock-label.muted {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.summary-unlock {
+  padding: 0.15rem 0.6rem;
+  font-weight: 700;
+  color: var(--secondary);
+  background: var(--panel-2);
+  border: 2px solid var(--secondary);
+  border-radius: 999px;
+}
+
+.summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+  width: 100%;
+  margin-top: 0.4rem;
+}
+
+/* Responsive: tighten spacing on narrow portrait screens */
 @media (max-width: 480px) {
   .hud {
     padding: 0.35rem;
@@ -234,5 +543,9 @@ input[type="range"] {
   .btn,
   .tool {
     padding: 0.5rem 0.7rem;
+  }
+  .piece-slot {
+    width: 52px;
+    height: 52px;
   }
 }

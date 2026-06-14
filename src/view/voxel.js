@@ -23,7 +23,20 @@ export const THEME_COLORS = {
 };
 
 export function themeColor(color) {
+  if (typeof color === "string" && color.startsWith("#")) return color;
   return THEME_COLORS[color] ?? "#dddddd";
+}
+
+// Multiply an #rrggbb color by a brightness factor (clamped to 0..255).
+export function shadeColor(hex, factor) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const clamp = (v) => Math.max(0, Math.min(255, Math.round(v)));
+  const r = clamp(((n >> 16) & 0xff) * factor);
+  const g = clamp(((n >> 8) & 0xff) * factor);
+  const b = clamp((n & 0xff) * factor);
+  return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
 }
 
 export function terrainColor(terrain) {

@@ -29,7 +29,20 @@ const server = createServer(async (req, res) => {
       res.end("Forbidden");
       return;
     }
-    const data = await readFile(filePath);
+    let data;
+    try {
+      data = await readFile(filePath);
+    } catch {
+      // SPA fallback: client-side routes (e.g. /overworld, /stage/level-a) have no
+      // extension and no backing file — serve index.html so the app can route them.
+      if (extname(urlPath) === "") {
+        data = await readFile(join(ROOT, "index.html"));
+        res.writeHead(200, { "Content-Type": MIME[".html"] });
+        res.end(data);
+        return;
+      }
+      throw new Error("not found");
+    }
     res.writeHead(200, { "Content-Type": MIME[extname(filePath)] || "application/octet-stream" });
     res.end(data);
   } catch {

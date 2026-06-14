@@ -26,6 +26,7 @@ export const LockState = Object.freeze({
 
 export const TrainStatus = Object.freeze({
   WAITING: "waiting",
+  BOARDING: "boarding", // produced and parked at the source station, dwelling before departure
   RUNNING: "running",
   COMPLETED: "completed",
   LOST: "lost",

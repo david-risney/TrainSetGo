@@ -21,36 +21,12 @@ export class Camera {
     return { zoom: this.zoom, panX: this.panX, panY: this.panY, rotation: this.rotation };
   }
 
-  rotateBy(deltaRadians) {
-    this.rotation += deltaRadians;
-  }
-
   _clampZoom(z) {
     return Math.max(this.minZoom, Math.min(this.maxZoom, z));
-  }
-
-  zoomBy(factor, centerX = 0, centerY = 0) {
-    const prev = this.zoom;
-    const next = this._clampZoom(prev * factor);
-    // Keep the point under (centerX, centerY) stable while zooming.
-    const k = next / prev;
-    this.panX = centerX - (centerX - this.panX) * k;
-    this.panY = centerY - (centerY - this.panY) * k;
-    this.zoom = next;
   }
 
   panBy(dx, dy) {
     this.panX += dx;
     this.panY += dy;
-  }
-
-  // World (scene) point -> screen point.
-  worldToScreen(x, y) {
-    return { x: x * this.zoom + this.panX, y: y * this.zoom + this.panY };
-  }
-
-  // Screen point -> world (scene) point.
-  screenToWorld(sx, sy) {
-    return { x: (sx - this.panX) / this.zoom, y: (sy - this.panY) / this.zoom };
   }
 }

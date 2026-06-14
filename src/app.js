@@ -4,7 +4,7 @@
 import { GameModel } from "./model/simulation.js";
 import { SaveStore, updateBestResult, applyUnlocks } from "./model/save.js";
 import { evaluateUnlocks } from "./model/unlock.js";
-import { Renderer } from "./view/renderer.js";
+import { Renderer, hexToWorld } from "./view/renderer.js";
 import { AudioView } from "./view/audio.js";
 import { InputController } from "./view/input.js";
 import { MenuScreen } from "./ui/menu.js";
@@ -33,16 +33,22 @@ export class GameApp {
         this.requestRender();
       },
       onZoom: (factor, cx, cy) => {
-        this.renderer.camera.zoomBy(factor, cx, cy);
+        this.renderer.zoomAt(factor, cx, cy);
         this.requestRender();
       },
-      onRotate: (deltaRadians) => {
-        this.renderer.camera.rotateBy(deltaRadians);
+      onRotate: (deltaRadians, cx, cy) => {
+        this.renderer.rotateAt(deltaRadians, cx, cy);
         this.requestRender();
       },
     });
 
     window.addEventListener("resize", () => this.renderer.resize());
+
+    // Client-side routing: each view has its own URL (/, /overworld, /stage/{id},
+    // /editor, /settings). Back/forward navigation replays the matching screen.
+    window.addEventListener("popstate", () => {
+      this._applyRoute(this._routeFromLocation());
+    });
   }
 
   async init() {
@@ -57,7 +63,7 @@ export class GameApp {
     this.state = this.save.load();
     this.audio.applySettings(this.state.settings);
     await this.audio.load();
-    this.showMenu();
+    this._applyRoute(this._routeFromLocation());
   }
 
   persist() {
@@ -67,6 +73,7 @@ export class GameApp {
   requestRender(snapshot) {
     if (snapshot) this.renderer.render(snapshot);
     else if (this.renderer.lastSnapshot) this.renderer.render(this.renderer.lastSnapshot);
+    this.currentScreen?.afterRender?.();
   }
 
   clearUI() {
@@ -83,25 +90,72 @@ export class GameApp {
 
   // --- Screen navigation ---
   showMenu() {
+    this._setURL("/");
     this.renderer.render(null);
     this.setScreen(new MenuScreen(this));
   }
 
   showOverworld() {
+    this._setURL("/overworld");
     this.setScreen(new OverworldScreen(this));
   }
 
   showGame(levelId, levelDef = null) {
+    this._setURL(`/stage/${encodeURIComponent(levelId)}`);
     const def = levelDef ?? this.levels.get(levelId);
     this.setScreen(new GameScreen(this, def));
   }
 
   showEditor() {
+    this._setURL("/editor");
     this.setScreen(new EditorScreen(this));
   }
 
   showSettings() {
+    this._setURL("/settings");
     this.setScreen(new SettingsScreen(this));
+  }
+
+  // --- Routing ---
+  // Map the current location to a route descriptor.
+  _routeFromLocation() {
+    const path = (window.location?.pathname || "/").replace(/\/+$/, "") || "/";
+    if (path === "/overworld") return { name: "overworld" };
+    if (path === "/editor") return { name: "editor" };
+    if (path === "/settings") return { name: "settings" };
+    const stage = path.match(/^\/stage\/(.+)$/);
+    if (stage) return { name: "stage", id: decodeURIComponent(stage[1]) };
+    return { name: "menu" };
+  }
+
+  // Show the screen for a route without pushing history (the URL already matches).
+  _applyRoute(route) {
+    switch (route.name) {
+      case "overworld":
+        this.showOverworld();
+        break;
+      case "editor":
+        this.showEditor();
+        break;
+      case "settings":
+        this.showSettings();
+        break;
+      case "stage":
+        if (this.levels.has(route.id)) this.showGame(route.id);
+        else this.showMenu();
+        break;
+      default:
+        this.showMenu();
+    }
+  }
+
+  // Push a new history entry only when the path actually changes (so _applyRoute,
+  // invoked from popstate or boot, doesn't create a redundant entry).
+  _setURL(path) {
+    if (typeof window === "undefined" || !window.history) return;
+    const norm = (p) => p.replace(/\/+$/, "") || "/";
+    if (norm(window.location.pathname) === norm(path)) return;
+    window.history.pushState({}, "", path);
   }
 
   isUnlocked(levelId) {
@@ -158,6 +212,11 @@ async function boot() {
     runLevel: () => app._gameHooks?.run(),
     retryLevel: () => app._gameHooks?.retry(),
     camera: () => app.renderer.camera.get(),
+    hexToScreen: (q, r) => app.renderer.worldToScreen(hexToWorld(q, r)),
+    screenToHex: (x, y) => app.renderer.screenToHex(x, y),
+    editorSelectTool: (group, value) => app._editorHooks?.selectTool(group, value),
+    editorTapHex: (q, r) => app._editorHooks?.tapHex(q, r),
+    editorPlay: () => app._editorHooks?.play(),
     lastAudioEvent: () => app.audio.lastEvent,
   };
   window.dispatchEvent(new Event("trainsetgo:ready"));

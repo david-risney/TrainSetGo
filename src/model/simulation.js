@@ -7,6 +7,7 @@ import { loadLevel, stationAt } from "./level.js";
 import { Rng } from "./rng.js";
 import { completionPct, evaluateUnlocks } from "./unlock.js";
 import { ViewEvent } from "../view/view-abstraction.js";
+import { connectedEdges } from "./track.js";
 import {
   cycleSwitch,
   hasTrack,
@@ -24,6 +25,11 @@ function fail(reason) {
 function ok(extra = {}) {
   return { ok: true, ...extra };
 }
+
+// Ticks a produced train sits parked at its source station before it departs. With the
+// arcade tile duration (~900ms/tick) this is ~2 real seconds. (User: "show the train at
+// the station for 2 seconds before it starts".)
+const DWELL_TICKS = 2;
 
 export class GameModel {
   constructor() {
@@ -74,6 +80,7 @@ export class GameModel {
       status: TrainStatus.WAITING,
       position: { ...t.source },
       enterEdge: null,
+      boardingTicks: 0,
     }));
     return ok();
   }
@@ -93,6 +100,36 @@ export class GameModel {
     tile.playerPlaced = true;
     this._emit({ type: ViewEvent.PLACE, hex: { ...hex }, shape });
     return ok();
+  }
+
+  // Choose the orientation that connects to the most neighbors (track that links back,
+  // or an adjacent station). Ties resolve to the lowest orientation. (Auto-fit on place)
+  bestOrientation(hex, shape, switchState = 0) {
+    let best = 0;
+    let bestScore = -1;
+    for (let o = 0; o < 6; o++) {
+      let score = 0;
+      for (const e of connectedEdges(shape, o, switchState)) {
+        const ntile = this.grid.get(hexKey(neighbor(hex, e)));
+        if (!ntile) continue;
+        if (isStation(ntile) || tileConnectsEdge(ntile, oppositeEdge(e))) score++;
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        best = o;
+      }
+    }
+    return best;
+  }
+
+  // Place a piece, auto-rotating it to the best-fitting orientation. (Auto-fit on place)
+  placeTrackAutoFit(hex, shape) {
+    const tile = this._tile(hex);
+    if (!tile) return fail("no-tile");
+    if (!isEditable(tile)) return fail("locked");
+    const orientation = this.bestOrientation(hex, shape);
+    const res = this.placeTrack(hex, shape, orientation);
+    return res.ok ? ok({ orientation }) : res;
   }
 
   rotateTrack(hex) {
@@ -137,6 +174,7 @@ export class GameModel {
       train.status = TrainStatus.WAITING;
       train.position = { ...train.source };
       train.enterEdge = null;
+      train.boardingTicks = 0;
     }
     return ok();
   }
@@ -167,11 +205,19 @@ export class GameModel {
     if (!this.running || this.isRunComplete()) return ok({ tick: this.tick });
     this.tick += 1;
 
-    // 1. Departures.
+    // 1. Production & departures. A waiting train is first "produced" — it appears parked
+    //    at its source station (BOARDING) — then departs after a short dwell. (User request)
     for (const train of this.trains) {
       if (train.status === TrainStatus.WAITING && this.tick > train.startDelay) {
-        train.status = TrainStatus.RUNNING;
-        this._emit({ type: ViewEvent.DEPART, trainId: train.id });
+        train.status = TrainStatus.BOARDING;
+        train.boardingTicks = 0;
+        this._emit({ type: ViewEvent.PRODUCE, trainId: train.id, position: { ...train.position } });
+      } else if (train.status === TrainStatus.BOARDING) {
+        train.boardingTicks += 1;
+        if (train.boardingTicks >= DWELL_TICKS) {
+          train.status = TrainStatus.RUNNING;
+          this._emit({ type: ViewEvent.DEPART, trainId: train.id });
+        }
       }
     }
 
@@ -289,6 +335,7 @@ export class GameModel {
         id: t.id,
         color: t.color,
         status: t.status,
+        startDelay: t.startDelay,
         position: { ...t.position },
         headingEdge: t.enterEdge == null ? null : oppositeEdge(t.enterEdge),
       })),

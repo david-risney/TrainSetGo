@@ -32,17 +32,28 @@ modules in `src/` directly.
 
 ## How to play
 
-1. **Start** from the menu to enter the overworld and pick an unlocked level.
-2. Select a track tool, **tap a grass tile** to place track, and use **Rotate**, **Erase**,
-   and **Toggle** (for switches) to shape the route.
-3. Press **Run** to release the trains. Deliver each train to the station matching its
-   color. Trains are lost if they run off the end of track, collide, or reach the wrong
-   station.
-4. Meet a level's delivery requirement to **unlock** further levels (some thresholds and
+1. **Start** from the menu to enter the overworld and pick an unlocked level (each named
+   station on the map is a level).
+2. You get **4 random track pieces** at the bottom — the slots show the piece *model*. Pick
+   one and **tap a grass tile** to place it. The piece is **auto-rotated to best fit** the
+   surrounding track.
+3. To nudge a piece's rotation, tap the **floating ⟳ button** that appears next to the piece
+   you just placed. **Tap a switch tile** to toggle which branch it connects.
+4. Trains run continuously — deliver each train to the station matching its color. Trains are
+   lost if they run off the end of track, collide, or reach the wrong station. Press
+   **Escape** to return to the menu.
+5. Meet a level's delivery requirement to **unlock** further levels (some thresholds and
    specific train deliveries unlock bonus levels).
 
 Progress (unlocks, best results, in-progress placements) and audio settings auto-save to
 `localStorage`.
+
+## Documentation
+
+- [docs/architecture.md](docs/architecture.md) — how the code is organized.
+- [docs/coding-style.md](docs/coding-style.md) — coding conventions.
+- [docs/README.md](docs/README.md) — docs index and when to update docs.
+- [AGENTS.md](AGENTS.md) — entry point for AI agents and contributors.
 
 ## Testing
 

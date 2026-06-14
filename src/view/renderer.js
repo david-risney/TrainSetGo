@@ -2,24 +2,36 @@
 // draws terrain/track/stations/trains as voxel-style prisms. Browser-only. (FR-039)
 
 import { EDGE_DIRECTIONS, neighbor, oppositeEdge } from "../model/hex.js";
-import { TerrainType, TrainStatus } from "../model/constants.js";
+import { TerrainType, TrainStatus, TrackShape } from "../model/constants.js";
+import { connectionPairs, connectsEdge } from "../model/track.js";
 import { Camera } from "./camera.js";
-import { terrainColor, terrainHeight, themeColor } from "./voxel.js";
+import { terrainColor, terrainHeight, themeColor, shadeColor } from "./voxel.js";
 
 const HEX_SIZE = 30; // base scene units (pre-zoom)
-const SQUISH = 0.6; // vertical flatten for the isometric look
+// Vertical flatten for the isometric look. Higher = camera looks more "down"
+// (more top face visible, less side). (User: "looking slightly more down".)
+export const SQUISH = 0.82;
 
-// Pointy-top axial -> un-zoomed world coordinates (size = HEX_SIZE).
+// Sunny, light background tint (User: "Make the background a light yellow").
+// Striped "Sunny Rails" backdrop matching the menu's CSS background so the game
+// and intro menu share one consistent look.
+const BG = "#fbf3c9";
+const BG_2 = "#f6e9a8";
+const BG_GLOW = "#fff6c0";
+
+// Pointy-top axial -> flat ground-plane world coordinates (size = HEX_SIZE).
+// The isometric vertical flatten (SQUISH) is applied later, at projection time, so it
+// composes correctly with camera rotation (rotate-then-squish, matching _hexCorners).
 export function hexToWorld(q, r) {
   const px = Math.sqrt(3) * (q + r / 2);
   const py = 1.5 * r;
-  return { x: HEX_SIZE * px, y: HEX_SIZE * py * SQUISH };
+  return { x: HEX_SIZE * px, y: HEX_SIZE * py };
 }
 
-// World -> fractional axial, then cube-round to nearest hex.
+// Flat ground-plane world -> fractional axial, then cube-round to nearest hex.
 export function worldToHex(x, y) {
   const px = x / HEX_SIZE;
-  const py = y / (HEX_SIZE * SQUISH);
+  const py = y / HEX_SIZE;
   const qf = (Math.sqrt(3) / 3) * px - (1 / 3) * py;
   const rf = (2 / 3) * py;
   return cubeRound(qf, rf);
@@ -67,6 +79,9 @@ export class Renderer {
     return { x: this.viewW / 2, y: this.viewH / 3 };
   }
 
+  // Ground-plane world point -> screen. Rotate in the ground plane first, THEN apply the
+  // isometric vertical squish. This order is what keeps tile footprints, hex corners, and
+  // the depth sort consistent as the camera rotates.
   worldToScreen(w) {
     const o = this._origin();
     const cos = Math.cos(this.camera.rotation);
@@ -75,20 +90,77 @@ export class Renderer {
     const ry = w.x * sin + w.y * cos;
     return {
       x: o.x + this.camera.panX + rx * this.camera.zoom,
-      y: o.y + this.camera.panY + ry * this.camera.zoom,
+      y: o.y + this.camera.panY + ry * SQUISH * this.camera.zoom,
     };
   }
 
   screenToHex(sx, sy) {
     const o = this._origin();
-    const zx = (sx - o.x - this.camera.panX) / this.camera.zoom;
-    const zy = (sy - o.y - this.camera.panY) / this.camera.zoom;
-    // Inverse-rotate back into world space.
+    const rx = (sx - o.x - this.camera.panX) / this.camera.zoom;
+    const ry = (sy - o.y - this.camera.panY) / (this.camera.zoom * SQUISH);
+    // Inverse-rotate back into the flat ground plane.
     const cos = Math.cos(this.camera.rotation);
     const sin = Math.sin(this.camera.rotation);
-    const wx = zx * cos + zy * sin;
-    const wy = -zx * sin + zy * cos;
+    const wx = rx * cos + ry * sin;
+    const wy = -rx * sin + ry * cos;
     return worldToHex(wx, wy);
+  }
+
+  // Zoom while keeping the world point under (sx, sy) fixed on screen. Accounts for
+  // the renderer's drawing origin so the gesture stays centered on the focal point.
+  // (User: "Zoom in / out is not centered around the middle point of the two fingers".)
+  zoomAt(factor, sx, sy) {
+    const o = this._origin();
+    const prev = this.camera.zoom;
+    const next = this.camera._clampZoom(prev * factor);
+    if (next === prev) return;
+    // Rotated-ground-plane vector of the anchor (kept constant across the zoom).
+    const rx = (sx - o.x - this.camera.panX) / prev;
+    const ry = (sy - o.y - this.camera.panY) / (prev * SQUISH);
+    this.camera.panX = sx - o.x - rx * next;
+    this.camera.panY = sy - o.y - ry * SQUISH * next;
+    this.camera.zoom = next;
+  }
+
+  // Rotate the camera around the world point under (sx, sy) so pieces stay anchored
+  // to the focal point rather than swinging around the screen origin.
+  rotateAt(deltaRadians, sx, sy) {
+    const o = this._origin();
+    // Current rotated-ground-plane coords of the focal point.
+    const rx = (sx - o.x - this.camera.panX) / this.camera.zoom;
+    const ry = (sy - o.y - this.camera.panY) / (this.camera.zoom * SQUISH);
+    const cos = Math.cos(deltaRadians);
+    const sin = Math.sin(deltaRadians);
+    // Where that same world point lands after the extra rotation.
+    const nrx = rx * cos - ry * sin;
+    const nry = rx * sin + ry * cos;
+    this.camera.panX = sx - o.x - nrx * this.camera.zoom;
+    this.camera.panY = sy - o.y - nry * SQUISH * this.camera.zoom;
+    this.camera.rotation += deltaRadians;
+  }
+
+  // Frame a set of ground-plane world points so they fit centered in the viewport.
+  fitWorld(points, { fillX = 0.7, fillY = 0.6, maxZoom = 1.4, pad = HEX_SIZE } = {}) {
+    if (!points.length) return;
+    const xs = points.map((p) => p.x);
+    const ys = points.map((p) => p.y);
+    const minX = Math.min(...xs) - pad;
+    const maxX = Math.max(...xs) + pad;
+    const minY = Math.min(...ys) - pad;
+    const maxY = Math.max(...ys) + pad;
+    const w = Math.max(1, maxX - minX);
+    const h = Math.max(1, maxY - minY);
+    // Frame at rotation 0: x maps at zoom, y maps at zoom*SQUISH.
+    const zoom = this.camera._clampZoom(
+      Math.min(maxZoom, (this.viewW * fillX) / w, (this.viewH * fillY) / (h * SQUISH)),
+    );
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    const o = this._origin();
+    this.camera.rotation = 0;
+    this.camera.zoom = zoom;
+    this.camera.panX = this.viewW / 2 - o.x - cx * zoom;
+    this.camera.panY = this.viewH / 2 - o.y - cy * SQUISH * zoom;
   }
 
   _hexCorners(cx, cy, radius) {
@@ -101,46 +173,183 @@ export class Renderer {
     return pts;
   }
 
-  render(snapshot, progress = 1) {
+  // Striped "Sunny Rails" backdrop (diagonal stripes + soft top glow), mirroring
+  // the menu's CSS background so game and menu share one consistent theme.
+  _drawBackground(ctx) {
+    const w = this.viewW;
+    const h = this.viewH;
+    ctx.fillStyle = BG;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.rotate(-Math.PI / 4); // 135deg diagonal, matching the menu
+    ctx.fillStyle = BG_2;
+    const diag = Math.ceil(Math.hypot(w, h));
+    const period = 44;
+    const band = 22;
+    for (let x = -diag; x < diag; x += period) {
+      ctx.fillRect(x, -diag, band, diag * 2);
+    }
+    ctx.restore();
+
+    const glow = ctx.createRadialGradient(
+      w * 0.5,
+      h * 0.22,
+      0,
+      w * 0.5,
+      h * 0.22,
+      Math.hypot(w, h) * 0.6
+    );
+    glow.addColorStop(0, BG_GLOW);
+    glow.addColorStop(1, "rgba(255, 246, 192, 0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  render(snapshot, progress = 1, opts = {}) {
     this.lastSnapshot = snapshot;
     const ctx = this.ctx;
     ctx.save();
     ctx.scale(this.dpr, this.dpr);
     ctx.clearRect(0, 0, this.viewW, this.viewH);
-    ctx.fillStyle = "#10151f";
-    ctx.fillRect(0, 0, this.viewW, this.viewH);
+    this._drawBackground(ctx);
 
     if (!snapshot) {
       ctx.restore();
       return;
     }
 
-    // Back-to-front: smaller r is further back; tie-break by q.
-    const tiles = [...snapshot.tiles].sort((a, b) => a.r - b.r || a.q - b.q);
+    // Depth sort using the *projected* screen position so the painter's-order stays
+    // correct under camera rotation (User: rotation revealed mis-ordered pieces).
     const radius = HEX_SIZE * this.camera.zoom;
     const stationByKey = new Map(snapshot.stations.map((s) => [`${s.q},${s.r}`, s]));
+    const tileByKey = new Map(snapshot.tiles.map((t) => [`${t.q},${t.r}`, t]));
+    const placed = snapshot.tiles
+      .map((tile) => {
+        const w = hexToWorld(tile.q, tile.r);
+        const s = this.worldToScreen(w);
+        return { tile, w, s };
+      })
+      .sort((a, b) => a.s.y - b.s.y || a.s.x - b.s.x);
 
-    for (const tile of tiles) {
-      const w = hexToWorld(tile.q, tile.r);
-      const s = this.worldToScreen(w);
+    for (const { tile, s } of placed) {
       const height = terrainHeight(tile.terrain) * this.camera.zoom * SQUISH;
       this._drawPrism(s.x, s.y, radius, height, tile);
 
       if (tile.track) this._drawTrack(s.x, s.y - height, radius, tile.track);
 
       const station = stationByKey.get(`${tile.q},${tile.r}`);
-      if (station) this._drawStation(s.x, s.y - height, radius, station.color);
+      if (station) {
+        // Draw the rails that lead into the station, and face the building toward them.
+        const edges = this._stationEdges(tile, tileByKey);
+        if (edges.length) this._drawStationStub(s.x, s.y - height, radius, edges);
+        const facing = edges.length ? this._edgesFacing(edges) : 0;
+        this._drawStation(s.x, s.y - height, radius, station.color, facing);
+      }
     }
 
-    // Trains on top, interpolated between their previous and current tile.
+    // Trains on top, interpolated between their previous and current tile. A produced train
+    // that has not departed yet (BOARDING) is drawn parked at its source station.
     for (const train of snapshot.trains) {
       if (train.status === TrainStatus.WAITING) continue;
       const w = this._trainWorld(train, progress);
       const s = this.worldToScreen(w);
-      this._drawTrain(s.x, s.y - 14 * this.camera.zoom, radius, train);
+      this._drawTrain(s.x, s.y - 14 * this.camera.zoom, radius, train, this._trainFacing(train));
+    }
+
+    // Station countdowns: a floating timer over stations about to produce a train. (User req)
+    for (const c of opts.countdowns ?? []) {
+      const s = this.worldToScreen(hexToWorld(c.q, c.r));
+      this._drawStationCountdown(s.x, s.y, radius, c.seconds);
     }
 
     ctx.restore();
+  }
+
+  // Floating countdown badge above a station: how many seconds until it produces a train.
+  _drawStationCountdown(cx, cy, radius, seconds) {
+    const ctx = this.ctx;
+    const r = Math.max(11, radius * 0.42);
+    const by = cy - radius * 1.7; // hover above the station building
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, by, r, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(24, 30, 48, 0.86)";
+    ctx.fill();
+    ctx.lineWidth = Math.max(1.5, radius * 0.05);
+    ctx.strokeStyle = seconds <= 3 ? "#ff6b6b" : "#ffe08a";
+    ctx.stroke();
+    ctx.fillStyle = "#fff";
+    ctx.font = `bold ${Math.round(r * 1.15)}px system-ui, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(seconds), cx, by + 1);
+    ctx.restore();
+  }
+
+  // Edges of a station tile whose neighbor carries track connecting back into the station.
+  _stationEdges(tile, tileByKey) {
+    const edges = [];
+    for (let e = 0; e < 6; e++) {
+      const n = neighbor(tile, e);
+      const nt = tileByKey.get(`${n.q},${n.r}`);
+      if (
+        nt &&
+        nt.track &&
+        connectsEdge(nt.track.shape, nt.track.orientation, nt.track.switchState ?? 0, oppositeEdge(e))
+      ) {
+        edges.push(e);
+      }
+    }
+    return edges;
+  }
+
+  // World-space heading (pre-camera-rotation) that points along a set of edges.
+  _edgesFacing(edges) {
+    let x = 0;
+    let y = 0;
+    for (const e of edges) {
+      const d = EDGE_DIRECTIONS[e];
+      const w = hexToWorld(d.q, d.r);
+      x += w.x;
+      y += w.y;
+    }
+    return Math.atan2(y, x);
+  }
+
+  // World-space heading of a train (the edge it is moving toward).
+  _trainFacing(train) {
+    if (train.headingEdge != null) {
+      const d = EDGE_DIRECTIONS[train.headingEdge];
+      const w = hexToWorld(d.q, d.r);
+      return Math.atan2(w.y, w.x);
+    }
+    return 0;
+  }
+
+  // Short rail stubs from the station center toward each connecting edge. (User: "station
+  // tiles should show track going to the station".)
+  _drawStationStub(cx, cy, radius, edges) {
+    const ctx = this.ctx;
+    ctx.lineCap = "round";
+    const rot = this.camera.rotation;
+    const cos = Math.cos(rot);
+    const sin = Math.sin(rot);
+    const z = this.camera.zoom;
+    const width = Math.max(2, 4 * z);
+    ctx.strokeStyle = "#2b2b2b";
+    ctx.lineWidth = width;
+    for (const e of edges) {
+      const d = EDGE_DIRECTIONS[e];
+      const w = hexToWorld(d.q, d.r);
+      const rx = w.x * cos - w.y * sin;
+      const ry = w.x * sin + w.y * cos;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + rx * 0.5 * z, cy + ry * SQUISH * 0.5 * z);
+      ctx.stroke();
+    }
   }
 
   // Interpolated world position for a moving train (smooths slow tile-to-tile motion).
@@ -164,13 +373,17 @@ export class Renderer {
     const colors = terrainColor(tile.terrain);
     const top = this._hexCorners(cx, cy - height, radius);
     const bottom = this._hexCorners(cx, cy, radius);
+    const topCenterY = cy - height;
 
-    // Side walls (only the front-facing ones, corners 2..5).
+    // Side walls: draw only the faces pointing toward the viewer. A face is front-facing
+    // when the midpoint of its top edge sits below the hex center on screen — this picks
+    // the correct faces at ANY camera rotation (fixes missing side walls when rotated).
     ctx.fillStyle = colors.side;
-    for (let i = 1; i <= 3; i++) {
+    for (let i = 0; i < 6; i++) {
       const a = top[i];
-      const b = top[i + 1];
-      const c = bottom[i + 1];
+      const b = top[(i + 1) % 6];
+      if ((a.y + b.y) / 2 <= topCenterY) continue; // back-facing
+      const c = bottom[(i + 1) % 6];
       const d = bottom[i];
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
@@ -187,6 +400,12 @@ export class Renderer {
     top.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
     ctx.closePath();
     ctx.fill();
+
+    // Slightly darker border around the tile edge for definition. (User request.)
+    ctx.strokeStyle = shadeColor(colors.side, 0.7);
+    ctx.lineWidth = Math.max(1, this.camera.zoom);
+    ctx.lineJoin = "round";
+    ctx.stroke();
 
     // Highlight editable tiles subtly.
     if (tile.lock === "editable" && tile.terrain === TerrainType.GRASS && !tile.track) {
@@ -207,7 +426,8 @@ export class Renderer {
       const w = hexToWorld(d.q, d.r);
       const rx = w.x * cos - w.y * sin;
       const ry = w.x * sin + w.y * cos;
-      return { x: rx * 0.5 * this.camera.zoom, y: ry * 0.5 * this.camera.zoom };
+      // Rotate in the ground plane, then squish y to match the projected top face.
+      return { x: rx * 0.5 * this.camera.zoom, y: ry * SQUISH * 0.5 * this.camera.zoom };
     };
     const segment = (a, b, color, width) => {
       const oa = edgeOffset(a);
@@ -222,67 +442,124 @@ export class Renderer {
     };
 
     const base = Math.max(2, 4 * this.camera.zoom);
-    const e = (edge) => (edge + track.orientation) % 6;
 
-    if (track.shape === "switch") {
-      const inbound = e(3);
-      const selected = e((track.switchState ?? 0) === 0 ? 0 : 1);
-      const other = e((track.switchState ?? 0) === 0 ? 1 : 0);
-      // Non-selected branch: lighter and thinner.
-      segment(inbound, other, "rgba(120,120,120,0.55)", Math.max(1.5, base * 0.7));
-      // Selected branch: full dark rail on top.
-      segment(inbound, selected, "#2b2b2b", base);
+    if (track.shape === TrackShape.SWITCH) {
+      // Draw the connected (selected) branch dark on top of the faint alternate
+      // branch, so the player can see which way the switch is currently set.
+      const selected = track.switchState ?? 0;
+      const other = selected === 0 ? 1 : 0;
+      const [[inbound, selBranch]] = connectionPairs(track.shape, track.orientation, selected);
+      const [, otherBranch] = connectionPairs(track.shape, track.orientation, other)[0];
+      segment(inbound, otherBranch, "rgba(120,120,120,0.55)", Math.max(1.5, base * 0.7));
+      segment(inbound, selBranch, "#2b2b2b", base);
       return;
     }
 
-    for (const [a, b] of trackPairs(track)) segment(a, b, "#2b2b2b", base);
-  }
-
-  _drawStation(cx, cy, radius, color) {
-    const ctx = this.ctx;
-    const r = radius * 0.4;
-    ctx.fillStyle = themeColor(color);
-    ctx.strokeStyle = "#1c1c1c";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.rect(cx - r, cy - r - 8 * this.camera.zoom, r * 2, r * 2);
-    ctx.fill();
-    ctx.stroke();
-  }
-
-  _drawTrain(cx, cy, radius, train) {
-    const ctx = this.ctx;
-    const r = radius * 0.3;
-    let fill = themeColor(train.color);
-    if (train.status === TrainStatus.LOST) fill = "#555";
-    ctx.fillStyle = fill;
-    ctx.strokeStyle = "#111";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, r, r * SQUISH + 2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-  }
-}
-
-// Local copy of connection pairs for rendering (mirror of track.js but view-side).
-function trackPairs(track) {
-  const rot = (e) => (e + track.orientation) % 6;
-  switch (track.shape) {
-    case "straight":
-      return [[rot(0), rot(3)]];
-    case "slightCurve":
-      return [[rot(0), rot(2)]];
-    case "sharpCurve":
-      return [[rot(0), rot(1)]];
-    case "crossing":
-      return [[rot(0), rot(3)], [rot(1), rot(4)]];
-    case "switch": {
-      const inbound = rot(3);
-      const branch = rot((track.switchState ?? 0) === 0 ? 0 : 1);
-      return [[inbound, branch]];
+    for (const [a, b] of connectionPairs(track.shape, track.orientation, track.switchState ?? 0)) {
+      segment(a, b, "#2b2b2b", base);
     }
-    default:
-      return [];
+  }
+
+  // Project a model-local offset (forward `fl`, right `sw`, in screen px at current zoom)
+  // for a model whose forward axis points along world angle `facing`. Applies camera
+  // rotation + iso squish so models turn WITH the board. (User: models didn't rotate.)
+  _projForward(facing, fl, sw) {
+    const rot = this.camera.rotation;
+    const cosR = Math.cos(rot);
+    const sinR = Math.sin(rot);
+    const cosF = Math.cos(facing);
+    const sinF = Math.sin(facing);
+    const ox = fl * cosF - sw * sinF;
+    const oy = fl * sinF + sw * cosF;
+    const rx = ox * cosR - oy * sinR;
+    const ry = ox * sinR + oy * cosR;
+    return { x: rx, y: ry * SQUISH };
+  }
+
+  // Directional rectangular voxel box: footprint is a rotated rectangle (halfLen along the
+  // model's forward axis, halfWid across) that rises straight up by `height` px. The front
+  // face (toward +forward) can be shaded distinctly (`opts.frontColor`) so the model reads
+  // with a clear heading. Walls are drawn back-to-front for correct overlap at any rotation.
+  _box(cx, cy, facing, halfLen, halfWid, height, baseColor, opts = {}) {
+    const ctx = this.ctx;
+    const corner = (fl, sw) => {
+      const d = this._projForward(facing, fl, sw);
+      return { x: cx + d.x, y: cy + d.y };
+    };
+    const b = [
+      corner(halfLen, halfWid), // front-right
+      corner(halfLen, -halfWid), // front-left
+      corner(-halfLen, -halfWid), // back-left
+      corner(-halfLen, halfWid), // back-right
+    ];
+    const t = b.map((p) => ({ x: p.x, y: p.y - height }));
+    const face = (pts, color) => {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+      ctx.closePath();
+      ctx.fill();
+    };
+    const walls = [0, 1, 2, 3]
+      .map((k) => ({ k, depth: (b[k].y + b[(k + 1) % 4].y) / 2 }))
+      .sort((p, q) => p.depth - q.depth);
+    for (const { k } of walls) {
+      const k1 = (k + 1) % 4;
+      const shade = k === 0 ? 0.95 : k === 2 ? 0.55 : 0.72; // front / back / sides
+      const color = k === 0 && opts.frontColor ? opts.frontColor : shadeColor(baseColor, shade);
+      face([t[k], t[k1], b[k1], b[k]], color);
+    }
+    face(t, shadeColor(baseColor, 1.15));
+  }
+
+  // Placeholder voxel "station": a building with a darker door on the track-facing side
+  // and a brighter roof cap, oriented toward the connecting track. (FR-039)
+  _drawStation(cx, cy, radius, color, facing = 0) {
+    const base = themeColor(color);
+    const lift = 6 * this.camera.zoom; // sit on top of the tile surface
+    const baseY = cy - lift;
+    const bodyH = radius * 0.5;
+    this._box(cx, baseY, facing, radius * 0.34, radius * 0.46, bodyH, base, {
+      frontColor: shadeColor(base, 0.45),
+    });
+    this._box(
+      cx,
+      baseY - bodyH,
+      facing,
+      radius * 0.24,
+      radius * 0.34,
+      radius * 0.2,
+      shadeColor(base, 1.3),
+    );
+  }
+
+  // Placeholder voxel "train": a long body with a bright headlight front, a taller cab to
+  // the rear and a chimney near the front — an unambiguous heading. (FR-039)
+  _drawTrain(cx, cy, radius, train, facing = 0) {
+    let base = themeColor(train.color);
+    if (train.status === TrainStatus.LOST) base = "#6b6b6b";
+    this._box(cx, cy, facing, radius * 0.5, radius * 0.28, radius * 0.3, base, {
+      frontColor: shadeColor(base, 1.35),
+    });
+    const rear = this._projForward(facing, -radius * 0.16, 0);
+    this._box(
+      cx + rear.x,
+      cy + rear.y,
+      facing,
+      radius * 0.2,
+      radius * 0.26,
+      radius * 0.34,
+      shadeColor(base, 0.8),
+    );
+    const fore = this._projForward(facing, radius * 0.3, 0);
+    this._box(
+      cx + fore.x,
+      cy + fore.y,
+      facing,
+      radius * 0.08,
+      radius * 0.08,
+      radius * 0.3,
+      shadeColor(base, 0.5),
+    );
   }
 }
