@@ -1,6 +1,8 @@
 {
   "id": "level-a-special",
   "name": "Special Detour",
+  "music": "sneaky-snitch",
+  "background": "kaleido",
   "seed": 99,
   "grid": [
     { "q": -1, "r": 0, "terrain": "station", "lock": "locked", "track": null },

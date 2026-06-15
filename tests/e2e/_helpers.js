@@ -9,7 +9,7 @@ export async function openApp(page) {
   await page.evaluate(() => window.localStorage.clear());
   await page.reload();
   await page.waitForFunction(() => !!window.TrainSetGo);
-  await expect(page.getByTestId("screen-menu")).toBeVisible();
+  await expect(page.getByTestId("screen-overworld")).toBeVisible();
 }
 
 export async function getState(page) {

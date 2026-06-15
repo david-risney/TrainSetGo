@@ -1,6 +1,7 @@
 // Settings screen: music/sfx volume + mute, persisted. (FR-043)
 
 import { button, el } from "./dom.js";
+import { BACKGROUNDS } from "../view/background.js";
 
 export class SettingsScreen {
   constructor(app) {
@@ -9,6 +10,7 @@ export class SettingsScreen {
   }
 
   mount(root) {
+    this.app.audio.playMenuMusic();
     const s = this.app.state.settings;
     const panel = el("div", { class: "screen settings-panel", "data-testid": "screen-settings" }, [
       el("h2", { text: "Settings" }),
@@ -24,10 +26,13 @@ export class SettingsScreen {
       this._toggle("Mute sound effects", "sfx-mute", s.sfxMuted, (v) =>
         this.app.updateSettings({ sfxMuted: v }),
       ),
+      this._select("Menu background", "menu-background", BACKGROUNDS, s.menuBackground, (v) =>
+        this.app.updateSettings({ menuBackground: v }),
+      ),
       button("Back", {
         class: "btn",
         "data-testid": "btn-back",
-        onClick: () => this.app.showMenu(),
+        onClick: () => this.app.showOverworld(),
       }),
       el("p", {
         class: "status-line credits",
@@ -56,6 +61,17 @@ export class SettingsScreen {
     input.checked = !!checked;
     input.addEventListener("change", () => onChange(input.checked));
     return el("div", { class: "row" }, [el("label", { text: label }), input]);
+  }
+
+  _select(label, testid, options, value, onChange) {
+    const select = el(
+      "select",
+      { class: "select", "data-testid": testid },
+      options.map((o) => el("option", { value: o.id, text: o.name })),
+    );
+    select.value = value;
+    select.addEventListener("change", () => onChange(select.value));
+    return el("div", { class: "row" }, [el("label", { text: label }), select]);
   }
 
   dispose() {}

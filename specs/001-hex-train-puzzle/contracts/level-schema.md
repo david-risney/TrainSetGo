@@ -10,6 +10,11 @@ axial hex `{q, r}`; edge indices are 0–5.
 {
   "id": "level-a",                       // string, unique across campaign
   "name": "First Steps",                 // string
+  "music": "carefree",                   // optional; track id from audio manifest (the
+                                         // song that plays during this level)
+  "background": "plasma",                // optional; animated backdrop preset id (see
+                                         // view/background.js BACKGROUNDS). Defaults to
+                                         // "sunny-rails" when omitted.
   "seed": 12345,                          // int, deterministic simulation seed
   "grid": [
     {

@@ -50,6 +50,7 @@ export class EditorScreen {
 
   mount(root) {
     this.root = root;
+    this.app.audio.playMenuMusic();
     this._buildRegion();
 
     this.statusEl = el("span", { class: "status-line", "data-testid": "status" });
@@ -68,7 +69,7 @@ export class EditorScreen {
         "data-testid": "btn-editor-play",
         onClick: () => this._play(),
       }),
-      button("Menu", { class: "btn", "data-testid": "btn-menu", onClick: () => this.app.showMenu() }),
+      button("Menu", { class: "btn", "data-testid": "btn-menu", onClick: () => this.app.showOverworld() }),
     ]);
 
     this.palette = el("div", { class: "editor-palette", "data-testid": "editor-palette" });

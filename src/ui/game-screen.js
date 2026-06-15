@@ -3,6 +3,7 @@
 // player nudge the last placed piece's rotation. There is no Run/Restart button. (US1, US4)
 
 import { button, el } from "./dom.js";
+import { createNowPlaying } from "./now-playing.js";
 import { GameModel } from "../model/simulation.js";
 import { TrackShape } from "../model/constants.js";
 import { TrainStatus } from "../model/constants.js";
@@ -70,12 +71,14 @@ export class GameScreen {
 
   mount(root) {
     this.root = root;
-    this.app.audio.startMusic();
+    this.app.audio.playLevelMusic(this.levelDef.music);
 
     this.statusEl = el("span", { class: "status-line", "data-testid": "status" });
+    this._nowPlaying = createNowPlaying(this.app);
     const top = el("div", { class: "hud top" }, [
       el("strong", { text: this.levelDef.name }),
       this.statusEl,
+      this._nowPlaying.el,
       button("Back", {
         class: "btn",
         "data-testid": "btn-back",
@@ -130,7 +133,7 @@ export class GameScreen {
       if (e.key === "Escape") {
         if (this.summaryEl) return;
         this._stopLoop();
-        this.app.showMenu();
+        this.app.showOverworld();
       }
     };
     window.addEventListener("keydown", this._onKeyDown);
@@ -417,7 +420,7 @@ export class GameScreen {
         "data-testid": "btn-summary-menu",
         onClick: () => {
           this._closeSummary();
-          this.app.showMenu();
+          this.app.showOverworld();
         },
       }),
     ];
@@ -506,6 +509,7 @@ export class GameScreen {
   dispose() {
     this._closeSummary();
     this._stopLoop();
+    this._nowPlaying?.dispose();
     if (this._onKeyDown) window.removeEventListener("keydown", this._onKeyDown);
   }
 }

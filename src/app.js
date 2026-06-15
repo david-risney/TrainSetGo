@@ -5,9 +5,9 @@ import { GameModel } from "./model/simulation.js";
 import { SaveStore, updateBestResult, applyUnlocks } from "./model/save.js";
 import { evaluateUnlocks } from "./model/unlock.js";
 import { Renderer, hexToWorld } from "./view/renderer.js";
+import { BackgroundManager, DEFAULT_BACKGROUND } from "./view/background.js";
 import { AudioView } from "./view/audio.js";
 import { InputController } from "./view/input.js";
-import { MenuScreen } from "./ui/menu.js";
 import { OverworldScreen } from "./ui/overworld.js";
 import { GameScreen } from "./ui/game-screen.js";
 import { EditorScreen } from "./ui/editor.js";
@@ -20,6 +20,10 @@ export class GameApp {
     this.levels = new Map(); // id -> level def
     this.manifest = null;
     this.renderer = new Renderer(canvas);
+    this.background = new BackgroundManager(
+      typeof document !== "undefined" ? document.getElementById("bg") : null,
+    );
+    this.background.start();
     this.audio = new AudioView();
     this.save = null;
     this.state = null;
@@ -42,7 +46,10 @@ export class GameApp {
       },
     });
 
-    window.addEventListener("resize", () => this.renderer.resize());
+    window.addEventListener("resize", () => {
+      this.renderer.resize();
+      this.background.resize();
+    });
 
     // Client-side routing: each view has its own URL (/, /overworld, /stage/{id},
     // /editor, /settings). Back/forward navigation replays the matching screen.
@@ -89,51 +96,57 @@ export class GameApp {
   }
 
   // --- Screen navigation ---
-  showMenu() {
-    this._setURL("/");
-    this.renderer.render(null);
-    this.setScreen(new MenuScreen(this));
-  }
-
+  // The overworld is the home/landing screen (the old main menu is merged into it).
   showOverworld() {
-    this._setURL("/overworld");
+    this._setURL("/");
+    this.setSceneBackground(this.menuBackground());
     this.setScreen(new OverworldScreen(this));
   }
 
   showGame(levelId, levelDef = null) {
     this._setURL(`/stage/${encodeURIComponent(levelId)}`);
     const def = levelDef ?? this.levels.get(levelId);
+    this.setSceneBackground(def?.background ?? DEFAULT_BACKGROUND);
     this.setScreen(new GameScreen(this, def));
   }
 
   showEditor() {
     this._setURL("/editor");
+    this.setSceneBackground(this.menuBackground());
     this.setScreen(new EditorScreen(this));
   }
 
   showSettings() {
     this._setURL("/settings");
+    this.setSceneBackground(this.menuBackground());
     this.setScreen(new SettingsScreen(this));
+  }
+
+  // The persisted menu background id (used for all non-level screens).
+  menuBackground() {
+    return this.state?.settings?.menuBackground ?? DEFAULT_BACKGROUND;
+  }
+
+  // Crossfade the animated backdrop to a new preset id.
+  setSceneBackground(id, opts) {
+    this.background?.setBackground(id, opts);
   }
 
   // --- Routing ---
   // Map the current location to a route descriptor.
   _routeFromLocation() {
     const path = (window.location?.pathname || "/").replace(/\/+$/, "") || "/";
-    if (path === "/overworld") return { name: "overworld" };
     if (path === "/editor") return { name: "editor" };
     if (path === "/settings") return { name: "settings" };
     const stage = path.match(/^\/stage\/(.+)$/);
     if (stage) return { name: "stage", id: decodeURIComponent(stage[1]) };
-    return { name: "menu" };
+    // "/" and the legacy "/overworld" alias both land on the overworld home.
+    return { name: "overworld" };
   }
 
   // Show the screen for a route without pushing history (the URL already matches).
   _applyRoute(route) {
     switch (route.name) {
-      case "overworld":
-        this.showOverworld();
-        break;
       case "editor":
         this.showEditor();
         break;
@@ -142,10 +155,10 @@ export class GameApp {
         break;
       case "stage":
         if (this.levels.has(route.id)) this.showGame(route.id);
-        else this.showMenu();
+        else this.showOverworld();
         break;
       default:
-        this.showMenu();
+        this.showOverworld();
     }
   }
 
@@ -153,7 +166,8 @@ export class GameApp {
   // invoked from popstate or boot, doesn't create a redundant entry).
   _setURL(path) {
     if (typeof window === "undefined" || !window.history) return;
-    const norm = (p) => p.replace(/\/+$/, "") || "/";
+    // "/overworld" is a legacy alias for the home route "/".
+    const norm = (p) => (p.replace(/\/+$/, "") || "/") === "/overworld" ? "/" : (p.replace(/\/+$/, "") || "/");
     if (norm(window.location.pathname) === norm(path)) return;
     window.history.pushState({}, "", path);
   }
@@ -181,6 +195,10 @@ export class GameApp {
   updateSettings(patch) {
     this.state.settings = { ...this.state.settings, ...patch };
     this.audio.applySettings(this.state.settings);
+    // Live-apply a menu-background change (settings is itself a menu screen).
+    if ("menuBackground" in patch && !(this.currentScreen instanceof GameScreen)) {
+      this.setSceneBackground(this.menuBackground());
+    }
     this.persist();
   }
 }
@@ -202,7 +220,7 @@ async function boot() {
     app,
     GameModel,
     state: () => app.state,
-    goMenu: () => app.showMenu(),
+    goMenu: () => app.showOverworld(),
     goOverworld: () => app.showOverworld(),
     goEditor: () => app.showEditor(),
     goSettings: () => app.showSettings(),
@@ -218,6 +236,11 @@ async function boot() {
     editorTapHex: (q, r) => app._editorHooks?.tapHex(q, r),
     editorPlay: () => app._editorHooks?.play(),
     lastAudioEvent: () => app.audio.lastEvent,
+    nowPlaying: () => app.audio.nowPlaying(),
+    musicNext: () => app.audio.nextTrack(),
+    musicMuted: () => app.audio.isMusicMuted(),
+    background: () => app.background?.currentId ?? null,
+    backgroundTransitioning: () => !!app.background?.transitioning,
   };
   window.dispatchEvent(new Event("trainsetgo:ready"));
 }

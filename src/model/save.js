@@ -6,7 +6,7 @@ export const SAVE_KEY = "trainsetgo.save";
 export const SCHEMA_VERSION = 1;
 
 export function defaultSettings() {
-  return { musicVolume: 0.8, sfxVolume: 1.0, musicMuted: false, sfxMuted: false };
+  return { musicVolume: 0.8, sfxVolume: 1.0, musicMuted: false, sfxMuted: false, menuBackground: "sunny-rails" };
 }
 
 // A fresh game state seeded from the campaign manifest's initialUnlocked. (FR-031)
@@ -55,6 +55,7 @@ export function normalize(doc, manifest) {
     sfxVolume: clamp01(s.sfxVolume, def.sfxVolume),
     musicMuted: typeof s.musicMuted === "boolean" ? s.musicMuted : def.musicMuted,
     sfxMuted: typeof s.sfxMuted === "boolean" ? s.sfxMuted : def.sfxMuted,
+    menuBackground: typeof s.menuBackground === "string" ? s.menuBackground : def.menuBackground,
   };
 
   // Always ensure initial levels remain unlocked.

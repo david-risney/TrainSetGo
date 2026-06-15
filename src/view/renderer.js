@@ -12,13 +12,6 @@ const HEX_SIZE = 30; // base scene units (pre-zoom)
 // (more top face visible, less side). (User: "looking slightly more down".)
 export const SQUISH = 0.82;
 
-// Sunny, light background tint (User: "Make the background a light yellow").
-// Striped "Sunny Rails" backdrop matching the menu's CSS background so the game
-// and intro menu share one consistent look.
-const BG = "#fbf3c9";
-const BG_2 = "#f6e9a8";
-const BG_GLOW = "#fff6c0";
-
 // Pointy-top axial -> flat ground-plane world coordinates (size = HEX_SIZE).
 // The isometric vertical flatten (SQUISH) is applied later, at projection time, so it
 // composes correctly with camera rotation (rotate-then-squish, matching _hexCorners).
@@ -173,47 +166,15 @@ export class Renderer {
     return pts;
   }
 
-  // Striped "Sunny Rails" backdrop (diagonal stripes + soft top glow), mirroring
-  // the menu's CSS background so game and menu share one consistent theme.
-  _drawBackground(ctx) {
-    const w = this.viewW;
-    const h = this.viewH;
-    ctx.fillStyle = BG;
-    ctx.fillRect(0, 0, w, h);
-
-    ctx.save();
-    ctx.translate(w / 2, h / 2);
-    ctx.rotate(-Math.PI / 4); // 135deg diagonal, matching the menu
-    ctx.fillStyle = BG_2;
-    const diag = Math.ceil(Math.hypot(w, h));
-    const period = 44;
-    const band = 22;
-    for (let x = -diag; x < diag; x += period) {
-      ctx.fillRect(x, -diag, band, diag * 2);
-    }
-    ctx.restore();
-
-    const glow = ctx.createRadialGradient(
-      w * 0.5,
-      h * 0.22,
-      0,
-      w * 0.5,
-      h * 0.22,
-      Math.hypot(w, h) * 0.6
-    );
-    glow.addColorStop(0, BG_GLOW);
-    glow.addColorStop(1, "rgba(255, 246, 192, 0)");
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, w, h);
-  }
-
+  // The animated full-screen backdrop is drawn on a separate canvas behind the
+  // scene (see view/background.js BackgroundManager). The scene canvas is kept
+  // transparent so that animated background shows through the tile gaps.
   render(snapshot, progress = 1, opts = {}) {
     this.lastSnapshot = snapshot;
     const ctx = this.ctx;
     ctx.save();
     ctx.scale(this.dpr, this.dpr);
     ctx.clearRect(0, 0, this.viewW, this.viewH);
-    this._drawBackground(ctx);
 
     if (!snapshot) {
       ctx.restore();

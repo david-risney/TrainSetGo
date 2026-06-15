@@ -1,6 +1,8 @@
 {
   "id": "level-c",
   "name": "Branch Yard",
+  "music": "the-builder",
+  "background": "rings",
   "seed": 7,
   "grid": [
     { "q": -1, "r": 0, "terrain": "station", "lock": "locked", "track": null },

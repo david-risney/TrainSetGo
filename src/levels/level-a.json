@@ -1,6 +1,8 @@
 {
   "id": "level-a",
   "name": "First Steps",
+  "music": "carefree",
+  "background": "plasma",
   "seed": 12345,
   "grid": [
     { "q": -2, "r": 0, "terrain": "station", "lock": "locked", "track": null },

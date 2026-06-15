@@ -1,6 +1,8 @@
 {
   "id": "level-switch",
   "name": "The Switch",
+  "music": "sneaky-snitch",
+  "background": "checker-warp",
   "seed": 5,
   "grid": [
     { "q": -1, "r": 0, "terrain": "station", "lock": "locked", "track": null },

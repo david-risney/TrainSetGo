@@ -1,6 +1,15 @@
 {
   "music": [
     {
+      "id": "wallpaper",
+      "file": "music/wallpaper.mp3",
+      "title": "Wallpaper",
+      "author": "Kevin MacLeod",
+      "source": "https://incompetech.com/music/royalty-free/",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
       "id": "carefree",
       "file": "music/carefree.mp3",
       "title": "Carefree",
@@ -8,8 +17,27 @@
       "source": "https://incompetech.com/music/royalty-free/",
       "license": "CC BY 4.0",
       "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "id": "the-builder",
+      "file": "music/the-builder.mp3",
+      "title": "The Builder",
+      "author": "Kevin MacLeod",
+      "source": "https://incompetech.com/music/royalty-free/",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "id": "sneaky-snitch",
+      "file": "music/sneaky-snitch.mp3",
+      "title": "Sneaky Snitch",
+      "author": "Kevin MacLeod",
+      "source": "https://incompetech.com/music/royalty-free/",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/"
     }
   ],
+  "menuMusic": ["wallpaper"],
   "sfx": {
     "depart": "sfx/depart.wav",
     "arrive": "sfx/arrive.wav",
@@ -18,6 +46,6 @@
     "place": "sfx/place.wav",
     "rotate": "sfx/rotate.wav"
   },
-  "attribution": "Music: \"Carefree\" by Kevin MacLeod (incompetech.com) — licensed under Creative Commons Attribution 4.0 (CC BY 4.0). Sound effects: original works released under CC0 1.0 (public domain).",
-  "comment": "The audio engine fetches these files at runtime and falls back to synthesized tones if a file is missing or cannot be decoded (e.g. offline). To add more audio, drop CC0/CC-BY files into music/ or sfx/ and reference them above."
+  "attribution": "Music by Kevin MacLeod (incompetech.com) \u2014 \"Wallpaper\", \"Carefree\", \"The Builder\", and \"Sneaky Snitch\", each licensed under Creative Commons Attribution 4.0 (CC BY 4.0). Sound effects: original works released under CC0 1.0 (public domain).",
+  "comment": "Music is coordinated by scene: 'menuMusic' plays in the menu/overworld; each level references a track id via its 'music' field. The audio engine streams these files at runtime and falls back to synthesized tones if a file is missing or cannot be decoded (e.g. offline). To add more audio, drop CC0/CC-BY files into music/ or sfx/ and reference them above."
 }

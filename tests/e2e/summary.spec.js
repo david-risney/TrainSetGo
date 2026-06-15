@@ -58,5 +58,5 @@ test("menu button returns to the main menu", async ({ page }) => {
   });
   await expect(page.getByTestId("screen-summary")).toBeVisible();
   await page.getByTestId("btn-summary-menu").click();
-  await expect(page.getByTestId("screen-menu")).toBeVisible();
+  await expect(page.getByTestId("screen-overworld")).toBeVisible();
 });

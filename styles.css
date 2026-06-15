@@ -41,6 +41,15 @@ body {
   height: 100dvh;
 }
 
+.bg-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 0;
+}
+
 .scene {
   position: absolute;
   inset: 0;
@@ -48,12 +57,14 @@ body {
   height: 100%;
   display: block;
   touch-action: none;
+  z-index: 1;
 }
 
 .ui-root {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  z-index: 2;
 }
 
 .ui-root > * {
@@ -72,8 +83,6 @@ body {
   pointer-events: none;
 }
 
-.menu,
-.menu-card,
 .settings-panel,
 .editor-panel,
 .hud,
@@ -147,60 +156,6 @@ button:active,
   background: #e8faf8;
 }
 
-/* --- Menu ----------------------------------------------------------------- */
-.menu {
-  align-items: center;
-  justify-content: center;
-  background:
-    radial-gradient(circle at 50% 22%, #fff6c0, transparent 60%),
-    repeating-linear-gradient(135deg, var(--bg) 0 22px, var(--bg-2) 22px 44px);
-}
-
-.menu-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 2rem 2.6rem;
-  background: var(--panel);
-  border: 3px solid var(--rail);
-  border-radius: 24px;
-  box-shadow: 0 14px 0 rgba(90, 74, 42, 0.18), 0 18px 40px rgba(74, 59, 30, 0.25);
-  max-width: 90vw;
-}
-
-.menu-logo {
-  font-size: clamp(3rem, 14vw, 5rem);
-  line-height: 1;
-  filter: drop-shadow(0 4px 2px rgba(74, 59, 30, 0.25));
-}
-
-.menu h1 {
-  font-size: clamp(2.2rem, 9vw, 3.6rem);
-  margin: 0;
-  letter-spacing: 0.04em;
-  color: var(--primary);
-  text-shadow: 2px 2px 0 var(--accent), 4px 4px 0 rgba(90, 74, 42, 0.15);
-}
-
-.menu-tagline {
-  margin: 0 0 1rem;
-  color: var(--muted);
-  font-weight: 600;
-}
-
-.menu-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.8rem;
-  width: min(78vw, 320px);
-}
-
-.menu-actions .btn {
-  width: 100%;
-}
-
 /* --- HUD bars overlaid on the scene -------------------------------------- */
 .hud {
   position: absolute;
@@ -238,6 +193,61 @@ button:active,
   gap: 0.4rem;
   align-items: center;
 }
+
+/* --- Now-playing status widget ------------------------------------------- */
+.now-playing {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(124, 92, 214, 0.12);
+  border: 1px solid rgba(124, 92, 214, 0.35);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.np-disc {
+  font-size: 1.1rem;
+  line-height: 1;
+  animation: np-spin 3s linear infinite;
+  transform-origin: 50% 50%;
+}
+
+.np-disc.paused {
+  animation-play-state: paused;
+  opacity: 0.6;
+}
+
+.np-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: clamp(6ch, 26vw, 28ch);
+}
+
+.np-btn {
+  padding: 0.1rem 0.4rem;
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+@keyframes np-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .np-disc {
+    animation: none;
+  }
+}
+
 
 /* Editor palette: grouped tile pickers (Track / Stations / Terrain). */
 .editor-palette {
@@ -377,6 +387,16 @@ button:active,
   cursor: not-allowed;
 }
 
+/* Settings is a station too, but tinted to read as a utility rather than a level. */
+.overworld-inner .level-node.settings-node {
+  border-color: #a78bfa;
+  color: #7c5cd6;
+}
+
+.overworld-title {
+  font-size: 1.25rem;
+}
+
 .settings-panel,
 .editor-panel {
   background: var(--panel);
@@ -410,6 +430,17 @@ input[type="checkbox"] {
   width: 22px;
   height: 22px;
   accent-color: var(--secondary);
+}
+
+.select {
+  min-height: var(--touch-target);
+  padding: 0.3rem 0.5rem;
+  border-radius: 8px;
+  border: 2px solid var(--accent);
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+  accent-color: var(--primary);
 }
 
 textarea {

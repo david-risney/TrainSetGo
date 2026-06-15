@@ -65,12 +65,13 @@ Key methods:
 
 | Module | Responsibility |
 | --- | --- |
-| `renderer.js` | Canvas 2D isometric compositor. Projects axial hexes to a squished iso layout and paints terrain/track/stations/trains as voxel prisms. Owns all camera transforms (`zoomAt`, `rotateAt`, `fitWorld`, `worldToScreen`, `screenToHex`). |
+| `renderer.js` | Canvas 2D isometric compositor. Projects axial hexes to a squished iso layout and paints terrain/track/stations/trains as voxel prisms. Owns all camera transforms (`zoomAt`, `rotateAt`, `fitWorld`, `worldToScreen`, `screenToHex`). The scene canvas is transparent so the animated background shows through. |
+| `background.js` | `BackgroundManager`: animated full-screen EarthBound-style backdrops on a dedicated `#bg` canvas behind the scene, with its own RAF loop. `setBackground(id, {transition})` crossfades between presets (`BACKGROUNDS` registry). The menu uses `settings.menuBackground`; each level uses its `background` field. Honors `prefers-reduced-motion` + page visibility. |
 | `camera.js` | Plain `{ zoom, pan, rotation }` state + clamping. Transform math lives in the renderer. |
 | `voxel.js` | Color palettes (`TERRAIN_COLORS`, `THEME_COLORS`), `shadeColor`, `terrainHeight`. |
 | `piece-preview.js` | Draws a small voxel model of a track piece into a palette canvas. |
 | `input.js` | `InputController`: unifies mouse + touch Pointer Events into `onTap` / `onPan` / `onZoom` / `onRotate`. |
-| `audio.js` | `AudioView`: streams CC music + plays SFX files, with a synthesized fallback. Driven by `View.onEvent`. |
+| `audio.js` | `AudioView`: streams CC music + plays SFX files, with a synthesized fallback. Driven by `View.onEvent` for SFX. Also a **music coordinator**: `playMenuMusic()` / `playLevelMusic(field)` pick a scene playlist from the manifest's `menuMusic` and each level's `music` field; `nextTrack()` advances; an `onMusicChange` pub/sub feeds the now-playing UI. |
 | `view-abstraction.js` | The `View` base class + `ViewEvent` enum — the presentation boundary. |
 
 ### UI (`src/ui/`) — screens
@@ -79,21 +80,21 @@ Every screen is a class with `mount(root)` and optional `dispose()` / `afterRend
 `onTap(x, y)`. The app swaps screens via `setScreen`.
 
 Each view has its own URL via the History API (client-side routing in `app.js`):
-`/` = menu, `/overworld`, `/stage/{levelId}`, `/editor`, `/settings`. The `show*`
-methods push history through `_setURL` (no-op when the path is unchanged); `popstate`
-and initial boot map the location back to a screen via `_routeFromLocation` /
+`/` = overworld (the home screen), `/stage/{levelId}`, `/editor`, `/settings`. The
+`show*` methods push history through `_setURL` (no-op when the path is unchanged);
+`popstate` and initial boot map the location back to a screen via `_routeFromLocation` /
 `_applyRoute`. Deep links work because `index.html` sets `<base href="/">` (so relative
 asset/`fetch` paths resolve from root) and `scripts/serve.mjs` falls back to `index.html`
 for extension-less routes.
 
 | Screen | File | Notes |
 | --- | --- | --- |
-| Menu | `menu.js` | Play/Continue, editor, settings. |
-| Overworld | `overworld.js` | Rendered as a real game scene; each station = a level. HTML labels are positioned over station voxels and re-aligned in `afterRender()`. |
-| Game | `game-screen.js` | The live arcade loop. 4 random piece slots, auto-fit placement, a floating rotate button, tap-a-switch-to-toggle, Escape→menu. |
-| Editor | `editor.js` | Visual map editor: paint Track / Station / Terrain tiles onto the game map; "Save & Play" compiles the map into a level def, validates via `loadLevel`, then plays. |
-| Settings | `settings.js` | Volume/mute sliders, persisted. |
+| Overworld | `overworld.js` | The home screen: the old main menu is merged in here. Rendered as a real game scene; each station = a level, plus a Settings station; a Play/Continue button resumes any in-progress level. HTML labels are positioned over station voxels and re-aligned in `afterRender()`. |
+| Game | `game-screen.js` | The live arcade loop. 4 random piece slots, auto-fit placement, a floating rotate button, tap-a-switch-to-toggle, Escape→overworld. |
+| Editor | `editor.js` | Visual map editor reachable only by its own `/editor` URL (no overworld node). Paint Track / Station / Terrain tiles onto the game map; "Save & Play" compiles the map into a level def, validates via `loadLevel`, then plays. |
+| Settings | `settings.js` | Volume/mute sliders, persisted. Reached from the Settings station on the overworld. |
 | `dom.js` | — | Tiny `el()` / `button()` helpers (no framework). |
+| `now-playing.js` | — | Reusable status-bar widget (spinning disc + song/artist + Next + music mute). Mounted in the overworld and in-game HUDs; subscribes to `AudioView.onMusicChange`. |
 
 ## Data flow
 

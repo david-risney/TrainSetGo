@@ -7,7 +7,7 @@ import { openApp } from "./_helpers.js";
 test("paint stations in the visual editor, play, and clear the level", async ({ page }) => {
   await openApp(page);
 
-  await page.getByTestId("btn-editor").click();
+  await page.evaluate(() => window.TrainSetGo.goEditor());
   await expect(page.getByTestId("screen-editor")).toBeVisible();
 
   // The palette shows grouped tile pickers (track / stations / terrain).
@@ -37,7 +37,7 @@ test("playing with fewer than two stations shows an error and stays in the edito
   page,
 }) => {
   await openApp(page);
-  await page.getByTestId("btn-editor").click();
+  await page.evaluate(() => window.TrainSetGo.goEditor());
 
   await page.getByTestId("btn-editor-play").click();
   await expect(page.getByTestId("editor-error")).toContainText("at least two stations");
@@ -46,7 +46,7 @@ test("playing with fewer than two stations shows an error and stays in the edito
 
 test("track tiles re-tap to rotate the placed piece", async ({ page }) => {
   await openApp(page);
-  await page.getByTestId("btn-editor").click();
+  await page.evaluate(() => window.TrainSetGo.goEditor());
 
   const orientation = await page.evaluate(() => {
     const ed = window.TrainSetGo.app.currentScreen;
@@ -60,3 +60,4 @@ test("track tiles re-tap to rotate the placed piece", async ({ page }) => {
   expect(orientation.o1).toBe(0);
   expect(orientation.o2).toBe(1);
 });
+
