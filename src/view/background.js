@@ -17,7 +17,12 @@ export const BACKGROUNDS = [
 
 export const DEFAULT_BACKGROUND = "sunny-rails";
 
-const TRANSITION_MS = 700;
+const TRANSITION_MS = 1200;
+
+// Smoothstep easing so the crossfade ramps in/out gently (more perceptible than linear).
+function easeInOut(p) {
+  return p * p * (3 - 2 * p);
+}
 
 function hsl(h, s, l) {
   return `hsl(${((h % 360) + 360) % 360} ${s}% ${l}%)`;
@@ -49,8 +54,13 @@ function drawSunnyRails(ctx, w, h, t) {
   ctx.fillRect(0, 0, w, h);
 }
 
-// Coarse-cell sine plasma with cycling hues.
+// Coarse-cell sine plasma in a single dreamy purple/indigo theme (lightness varies,
+// hue stays within a narrow violet band).
 function drawPlasma(ctx, w, h, t) {
+  const H = 262;
+  const S = 58;
+  ctx.fillStyle = hsl(H, S, 16);
+  ctx.fillRect(0, 0, w, h);
   const cell = 22;
   for (let y = 0; y < h; y += cell) {
     for (let x = 0; x < w; x += cell) {
@@ -59,55 +69,64 @@ function drawPlasma(ctx, w, h, t) {
         Math.sin(y * 0.026 - t * 0.9) +
         Math.sin((x + y) * 0.015 + t * 0.7) +
         Math.sin(Math.hypot(x - w / 2, y - h / 2) * 0.02 - t);
-      const hue = v * 50 + t * 24;
-      ctx.fillStyle = hsl(hue, 68, 56);
+      const n = v / 4; // ~ -1..1
+      const l = 34 + (n * 0.5 + 0.5) * 32; // 34..66
+      ctx.fillStyle = hsl(H + n * 12, S, l);
       ctx.fillRect(x, y, cell + 1, cell + 1);
     }
   }
 }
 
-// Horizontal candy bands that scroll and gently warp.
+// Horizontal candy bands in a single pink/magenta theme that scroll and gently warp.
 function drawWaves(ctx, w, h, t) {
+  const H = 330;
+  const S = 68;
+  ctx.fillStyle = hsl(H, S, 24);
+  ctx.fillRect(0, 0, w, h);
   const cell = 14;
   for (let y = 0; y < h; y += cell) {
-    const phase = Math.sin(y * 0.05 + t * 1.6) * 26;
-    const hue = y * 0.6 + t * 46 + phase;
-    ctx.fillStyle = hsl(hue, 72, 62);
-    const xoff = Math.sin(y * 0.03 + t) * 10;
-    ctx.fillRect(xoff - 12, y, w + 24, cell + 1);
+    const l = 50 + Math.sin(y * 0.12 + t * 2) * 16; // 34..66
+    ctx.fillStyle = hsl(H + Math.sin(y * 0.05 + t) * 10, S, l);
+    const xoff = Math.sin(y * 0.03 + t) * 12;
+    ctx.fillRect(xoff - 16, y, w + 32, cell + 1);
   }
 }
 
-// Concentric pulsing rings radiating from the center.
+// Concentric pulsing rings in a single teal/green theme.
 function drawRings(ctx, w, h, t) {
+  const H = 172;
+  const S = 52;
   const cx = w / 2;
   const cy = h / 2;
   const max = Math.hypot(w, h) / 2 + 40;
   const step = 34;
-  const pulse = (t * 60) % step;
-  ctx.fillStyle = hsl(t * 20, 60, 22);
+  const pulse = (t * 50) % step;
+  ctx.fillStyle = hsl(H, S, 18);
   ctx.fillRect(0, 0, w, h);
   for (let r = max; r > 0; r -= step) {
     const rr = r - pulse;
     if (rr <= 0) continue;
+    const l = 36 + Math.sin(rr * 0.05 - t * 2) * 16;
     ctx.beginPath();
     ctx.arc(cx, cy, rr, 0, Math.PI * 2);
-    ctx.fillStyle = hsl(rr * 0.6 - t * 70, 70, 56);
+    ctx.fillStyle = hsl(H, S, l);
     ctx.fill();
   }
 }
 
-// Rotating, wobbling checkerboard in two cycling hues.
+// Rotating, wobbling checkerboard in a single orange/amber theme.
 function drawCheckerWarp(ctx, w, h, t) {
+  const H = 26;
+  const S = 70;
   const tile = 46;
-  ctx.fillStyle = hsl(t * 30, 55, 30);
+  ctx.fillStyle = hsl(H, S, 22);
   ctx.fillRect(0, 0, w, h);
   ctx.save();
   ctx.translate(w / 2, h / 2);
-  ctx.rotate(Math.sin(t * 0.2) * 0.25);
+  ctx.rotate(Math.sin(t * 0.2) * 0.22);
   ctx.translate(-w / 2, -h / 2);
-  const a = hsl(t * 40, 65, 60);
-  const b = hsl(t * 40 + 180, 65, 50);
+  const a = hsl(H, S, 58);
+  const b = hsl(H + 14, S, 40);
   for (let y = -tile; y < h + tile; y += tile) {
     const wob = Math.sin(y * 0.05 + t * 1.5) * tile;
     for (let x = -tile; x < w + tile; x += tile) {
@@ -119,15 +138,19 @@ function drawCheckerWarp(ctx, w, h, t) {
   ctx.restore();
 }
 
-// Rotating pinwheel of colored wedges.
+// Rotating pinwheel of wedges in a single blue/cyan theme (alternating light/dark).
 function drawKaleido(ctx, w, h, t) {
+  const H = 206;
+  const S = 64;
   const cx = w / 2;
   const cy = h / 2;
   const radius = Math.hypot(w, h);
-  const n = 14;
+  const n = 16;
+  ctx.fillStyle = hsl(H, S, 20);
+  ctx.fillRect(0, 0, w, h);
   ctx.save();
   ctx.translate(cx, cy);
-  ctx.rotate(t * 0.25);
+  ctx.rotate(t * 0.22);
   for (let i = 0; i < n; i++) {
     const a0 = (i / n) * Math.PI * 2;
     const a1 = ((i + 1) / n) * Math.PI * 2;
@@ -135,7 +158,7 @@ function drawKaleido(ctx, w, h, t) {
     ctx.moveTo(0, 0);
     ctx.arc(0, 0, radius, a0, a1);
     ctx.closePath();
-    ctx.fillStyle = hsl(i * (360 / n) + t * 30, 70, i % 2 ? 60 : 48);
+    ctx.fillStyle = hsl(H + (i % 2 ? 16 : -8), S, i % 2 ? 60 : 44);
     ctx.fill();
   }
   ctx.restore();
@@ -261,13 +284,14 @@ export class BackgroundManager {
 
     let p = 1;
     if (this.transitioning) {
-      p = Math.min(1, (now - this.transitionStart) / TRANSITION_MS);
+      const raw = Math.min(1, (now - this.transitionStart) / TRANSITION_MS);
+      p = easeInOut(raw);
       const prev = PRESETS[this.prevId];
       if (prev) {
         ctx.globalAlpha = 1;
         prev(ctx, w, h, t);
       }
-      if (p >= 1) {
+      if (raw >= 1) {
         this.transitioning = false;
         this.prevId = null;
       }
