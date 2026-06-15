@@ -6,6 +6,7 @@ import { SaveStore, updateBestResult, applyUnlocks } from "./model/save.js";
 import { evaluateUnlocks } from "./model/unlock.js";
 import { Renderer, hexToWorld } from "./view/renderer.js";
 import { BackgroundManager, DEFAULT_BACKGROUND } from "./view/background.js";
+import { ModelStore } from "./view/model-store.js";
 import { AudioView } from "./view/audio.js";
 import { InputController } from "./view/input.js";
 import { OverworldScreen } from "./ui/overworld.js";
@@ -20,6 +21,8 @@ export class GameApp {
     this.levels = new Map(); // id -> level def
     this.manifest = null;
     this.renderer = new Renderer(canvas);
+    this.models = new ModelStore();
+    this.renderer.models = this.models;
     this.background = new BackgroundManager(
       typeof document !== "undefined" ? document.getElementById("bg") : null,
     );
@@ -70,6 +73,8 @@ export class GameApp {
     this.state = this.save.load();
     this.audio.applySettings(this.state.settings);
     await this.audio.load();
+    // Best-effort: load editable .vox models. On failure the renderer uses procedural boxes.
+    await this.models.load("src/assets/models/manifest.json", "src/assets/models/");
     this._applyRoute(this._routeFromLocation());
   }
 
@@ -241,6 +246,7 @@ async function boot() {
     musicMuted: () => app.audio.isMusicMuted(),
     background: () => app.background?.currentId ?? null,
     backgroundTransitioning: () => !!app.background?.transitioning,
+    modelNames: () => [...app.models.models.keys()],
   };
   window.dispatchEvent(new Event("trainsetgo:ready"));
 }

@@ -6,6 +6,7 @@ Project documentation lives here. Start with whichever matches your task:
 | --- | --- |
 | [architecture.md](architecture.md) | Understand how the code is organized — the model/view/ui split, data flow, rendering/camera model, persistence, and testing strategy. |
 | [coding-style.md](coding-style.md) | Write code that matches the repo's conventions (formatting, naming, error handling, determinism rules). |
+| [voxel-models.md](voxel-models.md) | Author or replace the `.vox` train/station models — recommended editors and the orientation/tint conventions. |
 
 ### Related material outside `docs/`
 

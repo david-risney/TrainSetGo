@@ -1,0 +1,6 @@
+{
+  "models": [
+    { "name": "train", "file": "train.vox", "tint": "theme", "footprint": 1.05, "lift": 0 },
+    { "name": "station", "file": "station.vox", "tint": "theme", "footprint": 1.1, "lift": 0 }
+  ]
+}

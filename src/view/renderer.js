@@ -50,6 +50,7 @@ export class Renderer {
     this.camera = new Camera();
     this.dpr = (typeof window !== "undefined" && window.devicePixelRatio) || 1;
     this.lastSnapshot = null;
+    this.models = null; // optional ModelStore; set by the app once .vox models load
     this.resize();
   }
 
@@ -473,12 +474,34 @@ export class Renderer {
     face(t, shadeColor(baseColor, 1.15));
   }
 
+  // Draw a normalized .vox model as a stack of unit cubes through the existing iso
+  // projection so it rotates WITH the board. Voxels are painter-sorted by their projected
+  // footprint depth (then height). With tint "theme" the authored grayscale is recolored by
+  // `baseColor` (voxel luminance → shade); otherwise the authored voxel colors are used.
+  _drawVoxelModel(cx, cy, radius, facing, model, baseColor) {
+    const cell = (radius * model.footprint) / Math.max(1, model.sizeX, model.sizeY);
+    const themed = model.tint === "theme";
+    const placed = model.voxels
+      .map((v) => ({ v, d: this._projForward(facing, v.x * cell, v.y * cell) }))
+      .sort((a, b) => a.d.y - b.d.y || a.v.z - b.v.z);
+    for (const { v, d } of placed) {
+      const color = themed ? shadeColor(baseColor, 0.55 + v.luma * 0.9) : v.color;
+      this._box(cx + d.x, cy + d.y - v.z * cell, facing, cell / 2, cell / 2, cell, color);
+    }
+  }
+
   // Placeholder voxel "station": a building with a darker door on the track-facing side
-  // and a brighter roof cap, oriented toward the connecting track. (FR-039)
+  // and a brighter roof cap, oriented toward the connecting track. Uses an authored .vox
+  // model when one is loaded, else falls back to the procedural boxes. (FR-039)
   _drawStation(cx, cy, radius, color, facing = 0) {
     const base = themeColor(color);
     const lift = 6 * this.camera.zoom; // sit on top of the tile surface
     const baseY = cy - lift;
+    const model = this.models?.get("station");
+    if (model) {
+      this._drawVoxelModel(cx, cy - model.lift * this.camera.zoom, radius, facing, model, base);
+      return;
+    }
     const bodyH = radius * 0.5;
     this._box(cx, baseY, facing, radius * 0.34, radius * 0.46, bodyH, base, {
       frontColor: shadeColor(base, 0.45),
@@ -495,10 +518,16 @@ export class Renderer {
   }
 
   // Placeholder voxel "train": a long body with a bright headlight front, a taller cab to
-  // the rear and a chimney near the front — an unambiguous heading. (FR-039)
+  // the rear and a chimney near the front — an unambiguous heading. Uses an authored .vox
+  // model when one is loaded, else falls back to the procedural boxes. (FR-039)
   _drawTrain(cx, cy, radius, train, facing = 0) {
     let base = themeColor(train.color);
     if (train.status === TrainStatus.LOST) base = "#6b6b6b";
+    const model = this.models?.get("train");
+    if (model) {
+      this._drawVoxelModel(cx, cy - model.lift * this.camera.zoom, radius, facing, model, base);
+      return;
+    }
     this._box(cx, cy, facing, radius * 0.5, radius * 0.28, radius * 0.3, base, {
       frontColor: shadeColor(base, 1.35),
     });

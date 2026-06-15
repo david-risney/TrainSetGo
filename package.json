@@ -6,6 +6,7 @@
   "description": "Hex Train Routing Puzzle Game - static web app",
   "scripts": {
     "serve": "node scripts/serve.mjs",
+    "make-models": "node scripts/make-models.mjs",
     "test:unit": "node --test \"tests/unit/**/*.test.js\"",
     "test:model": "node --test \"tests/model/**/*.test.js\"",
     "test:e2e": "playwright test",

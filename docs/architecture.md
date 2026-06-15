@@ -65,7 +65,9 @@ Key methods:
 
 | Module | Responsibility |
 | --- | --- |
-| `renderer.js` | Canvas 2D isometric compositor. Projects axial hexes to a squished iso layout and paints terrain/track/stations/trains as voxel prisms. Owns all camera transforms (`zoomAt`, `rotateAt`, `fitWorld`, `worldToScreen`, `screenToHex`). The scene canvas is transparent so the animated background shows through. |
+| `renderer.js` | Canvas 2D isometric compositor. Projects axial hexes to a squished iso layout and paints terrain/track/stations/trains as voxel prisms. Owns all camera transforms (`zoomAt`, `rotateAt`, `fitWorld`, `worldToScreen`, `screenToHex`). The scene canvas is transparent so the animated background shows through. Trains/stations use loaded `.vox` models (via `_drawVoxelModel`) when available, else procedural boxes. |
+| `vox.js` | Pure (Node-testable) MagicaVoxel `.vox` parser: `parseVox(buffer)` reads SIZE/XYZI/RGBA chunks; `normalizeModel` centers the footprint, resolves palette colors, and culls fully-enclosed voxels. |
+| `model-store.js` | `ModelStore`: best-effort async loader that fetches + parses the `.vox` files named in `src/assets/models/manifest.json`. `get(name)` returns a render-ready model (with `tint`/`footprint`/`lift`). Failures are non-fatal (renderer falls back to procedural placeholders). |
 | `background.js` | `BackgroundManager`: animated full-screen EarthBound-style backdrops on a dedicated `#bg` canvas behind the scene, with its own RAF loop. `setBackground(id, {transition})` crossfades between presets (`BACKGROUNDS` registry). The menu uses `settings.menuBackground`; each level uses its `background` field. Honors `prefers-reduced-motion` + page visibility. |
 | `camera.js` | Plain `{ zoom, pan, rotation }` state + clamping. Transform math lives in the renderer. |
 | `voxel.js` | Color palettes (`TERRAIN_COLORS`, `THEME_COLORS`), `shadeColor`, `terrainHeight`. |

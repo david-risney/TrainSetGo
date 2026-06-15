@@ -17,6 +17,7 @@ const MIME = {
   ".ico": "image/x-icon",
   ".wav": "audio/wav",
   ".mp3": "audio/mpeg",
+  ".vox": "application/octet-stream",
 };
 
 const server = createServer(async (req, res) => {
